@@ -1,6 +1,6 @@
 use std::ops::{Add, AddAssign, Div, Mul, MulAssign, Neg, Sub, SubAssign};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vec3 {
     pub x: f64,
     pub y: f64,
@@ -10,6 +10,10 @@ pub struct Vec3 {
 impl Vec3 {
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
+    }
+
+    pub fn copy(&self) -> Vec3 {
+        Vec3::new(self.x, self.y, self.z)
     }
 
     pub fn ones() -> Self {
