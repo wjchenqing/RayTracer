@@ -7,10 +7,10 @@ use indicatif::ProgressBar;
 pub use ray::Ray;
 pub use vec3::Vec3;
 
-fn ray_color(r: Ray) -> Vec3 {
+fn ray_color(r: &Ray) -> Vec3 {
     let unit_dir = (r.dir).unit();
     let t = 0.5 * (unit_dir.y + 1.0);
-    return Vec3::new(255.0, 255.0, 255.0) * (1.0 - t) + Vec3::new(128.0, 179.2, 255.0) * t;
+    return Vec3::new(255.0 - 127.5 * t, 255.0 - 76.5 * t, 255.0);
 }
 
 fn main() {
@@ -34,7 +34,7 @@ fn main() {
             let u = (i as f64) / ((i_w - 1) as f64);
             let v = ((i_h - j) as f64) / ((i_h - 1) as f64);
             let r = Ray::new(ori, low_left_corner + horizontal * u + vertical * v - ori);
-            let color = ray_color(r);
+            let color = ray_color(&r);
             let pixel = img.get_pixel_mut(i, j);
             *pixel = image::Rgb([color.x as u8, color.y as u8, color.z as u8]);
         }
