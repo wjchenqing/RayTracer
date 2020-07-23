@@ -7,21 +7,23 @@ use indicatif::ProgressBar;
 pub use ray::Ray;
 pub use vec3::Vec3;
 
-fn hit_sphere(center: &Vec3, radius: &f64, r: &Ray) -> bool {
+fn hit_sphere(center: &Vec3, radius: &f64, r: &Ray) -> f64 {
     let oc: Vec3 = r.ori.copy() - center.copy();
     let a = r.dir.squared_length();
     let b = (oc * r.dir) * 2.0;
     let c = oc.squared_length() - radius * radius;
     let discriminant = b * b - 4.0 * a * c;
     if discriminant < 0.0 {
-        return false;
+        return -1.0;
     }
-    true
+    (-b - discriminant.sqrt()) / (2.0 * a)
 }
 
 fn ray_color(r: &Ray) -> Vec3 {
-    if hit_sphere(&Vec3::new(0.0, 0.0, -1.0), &0.5, r) {
-        return Vec3::new(255.0, 0.0, 0.0);
+    let t = hit_sphere(&Vec3::new(0.0, 0.0, -1.0), &0.5, r);
+    if t > 0.0 {
+        let nor = (r.at(t) - Vec3::new(0.0, 0.0, -1.0)).unit();
+        return Vec3::new(nor.x + 1.0, nor.y + 1.0, nor.z + 1.0) * 0.5 * 255.0;
     }
     let unit_dir = (r.dir).unit();
     let t = 0.5 * (unit_dir.y + 1.0);
