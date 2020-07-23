@@ -10,7 +10,7 @@ pub use vec3::Vec3;
 fn ray_color(r: &Ray) -> Vec3 {
     let unit_dir = (r.dir).unit();
     let t = 0.5 * (unit_dir.y + 1.0);
-    return Vec3::new(255.0 - 127.5 * t, 255.0 - 76.5 * t, 255.0);
+    Vec3::new(255.0 - 127.5 * t, 255.0 - 76.5 * t, 255.0)
 }
 
 fn main() {
