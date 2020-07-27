@@ -15,13 +15,14 @@ fn random_num() -> f64 {
     tmp / f64::MAX
 }
 fn random_vec() -> Vec3 {
-    let x = random::<i8>();
-    let y = random::<i8>();
-    let z = random::<i8>();
-    if x == 0 && y == 0 && z==0{
+    let x = random::<i32>();
+    let y = random::<i32>();
+    let z = random::<i32>();
+    let tmp = Vec3::new(x as f64, y as f64, z as f64);
+    if tmp.length() == 0.0 {
         return random_vec();
     }
-    Vec3::new(x as f64, y as f64, z as f64).unit()
+    tmp.unit()
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct HitRecord {
@@ -166,7 +167,7 @@ fn sphere() {
     let i_h = 576;
     let i_w = 1024;
     let samples_per_pixel = 100;
-    let max_depth = 50;
+    let max_depth = 200;
     let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
     let bar = ProgressBar::new(i_h as u64);
 
@@ -193,7 +194,11 @@ fn sphere() {
             }
             color = color / (samples_per_pixel as f64);
             let pixel = img.get_pixel_mut(i, j);
-            *pixel = image::Rgb([color.x as u8, color.y as u8, color.z as u8]);
+            *pixel = image::Rgb([
+                ((color.x / 255.0).sqrt() * 255.0) as u8,
+                ((color.y / 255.0).sqrt() * 255.0) as u8,
+                ((color.z / 255.0).sqrt() * 255.0) as u8,
+            ]);
         }
         bar.inc(1);
     }
