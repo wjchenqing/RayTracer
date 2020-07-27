@@ -112,7 +112,7 @@ fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Vec3 {
     if depth <= 0 {
         return Vec3::new(0.0, 0.0, 0.0);
     }
-    let tmp = world.hit(r, 0.0, f64::MAX);
+    let tmp = world.hit(r, 0.001, f64::MAX);
     if let Some(rec) = tmp {
         let dir = rec.nor + random_vec();
         // return (rec.nor + Vec3::new(1.0, 1.0, 1.0)) * 0.5 * 255.0;
