@@ -4,7 +4,7 @@ mod vec3;
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 pub use rand::random;
-pub use std::f64::consts;
+pub use std::f64::consts::PI;
 pub use std::f64::INFINITY;
 
 pub use ray::Ray;
@@ -14,15 +14,18 @@ fn random_num() -> f64 {
     let tmp = random::<f64>();
     tmp / f64::MAX
 }
-fn random_vec() -> Vec3 {
+fn random_vec(nor: &Vec3) -> Vec3 {
     let x = random::<i32>();
     let y = random::<i32>();
     let z = random::<i32>();
     let tmp = Vec3::new(x as f64, y as f64, z as f64);
     if tmp.length() == 0.0 {
-        return random_vec();
+        return random_vec(nor);
     }
-    tmp.unit()
+    if tmp * nor.copy() > 0.0 {
+        return tmp.unit();
+    }
+    -tmp.unit()
 }
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct HitRecord {
@@ -114,7 +117,7 @@ fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Vec3 {
     }
     let tmp = world.hit(r, 0.001, f64::MAX);
     if let Some(rec) = tmp {
-        let dir = rec.nor + random_vec();
+        let dir = rec.nor + random_vec(&rec.nor);
         // return (rec.nor + Vec3::new(1.0, 1.0, 1.0)) * 0.5 * 255.0;
         return ray_color(&Ray::new(rec.pos, dir), world, depth - 1) * 0.5;
     }
