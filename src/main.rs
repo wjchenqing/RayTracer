@@ -3,6 +3,7 @@ mod ray;
 mod vec3;
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
+pub use rand::random;
 pub use std::f64::consts;
 pub use std::f64::INFINITY;
 
@@ -103,10 +104,54 @@ fn ray_color(r: &Ray, world: &dyn Hittable) -> Vec3 {
     Vec3::new(255.0 - 127.5 * t, 255.0 - 76.5 * t, 255.0)
 }
 
+pub struct Camera {
+    pub aspect_ratio: f64,     // = 16.0 / 9.0;
+    pub v_h: f64,              // = 2.0;
+    pub v_w: f64,              // = v_h * aspect_ratio;
+    pub f_l: f64,              // = 1.0;
+    pub ori: Vec3,             // = Vec3::zero();
+    pub horizontal: Vec3,      // = Vec3::new(v_w, 0.0, 0.0);
+    pub vertical: Vec3,        // = Vec3::new(0.0, v_h, 0.0);
+    pub low_left_corner: Vec3, // = ori - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, f_l);
+}
+impl Camera {
+    pub fn new() -> Self {
+        let aspect_ratio = 16.0 / 9.0;
+        let v_h = 2.0;
+        let v_w = v_h * aspect_ratio;
+        let f_l = 1.0;
+
+        let ori = Vec3::zero();
+        let horizontal = Vec3::new(v_w, 0.0, 0.0);
+        let vertical = Vec3::new(0.0, v_h, 0.0);
+        let low_left_corner = ori - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, f_l);
+
+        Self {
+            ori,
+            horizontal,
+            vertical,
+            low_left_corner,
+            aspect_ratio,
+            v_h,
+            v_w,
+            f_l,
+        }
+    }
+    pub fn get_ray(&self, u: f64, v: f64) -> Ray {
+        Ray::new(
+            self.ori,
+            self.low_left_corner + self.horizontal * u + self.vertical * v - self.ori,
+        )
+    }
+}
+fn random_num() -> f64 {
+    let tmp = random::<f64>();
+    tmp / f64::MAX
+}
 fn sphere() {
-    let aspect_ratio = 16.0 / 9.0;
     let i_h = 576;
     let i_w = 1024;
+    let samples_per_pixel = 100;
     let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
     let bar = ProgressBar::new(i_h as u64);
 
@@ -120,21 +165,18 @@ fn sphere() {
         radius: 100.0,
     }));
 
-    let v_h = 2.0;
-    let v_w = v_h * aspect_ratio;
-    let f_l = 1.0;
-
-    let ori = Vec3::zero();
-    let horizontal = Vec3::new(v_w, 0.0, 0.0);
-    let vertical = Vec3::new(0.0, v_h, 0.0);
-    let low_left_corner = ori - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, f_l);
+    let camera = Camera::new();
 
     for j in 0..i_h {
         for i in 0..i_w {
-            let u = (i as f64) / ((i_w - 1) as f64);
-            let v = ((i_h - j) as f64) / ((i_h - 1) as f64);
-            let r = Ray::new(ori, low_left_corner + horizontal * u + vertical * v - ori);
-            let color = ray_color(&r, &world);
+            let mut color = Vec3::new(0.0, 0.0, 0.0);
+            for _s in 1..samples_per_pixel {
+                let u = (i as f64 + random_num()) / ((i_w - 1) as f64);
+                let v = ((i_h - j) as f64 - random_num()) / ((i_h - 1) as f64);
+                let r = camera.get_ray(u, v);
+                color += ray_color(&r, &world);
+            }
+            color = color / (samples_per_pixel as f64);
             let pixel = img.get_pixel_mut(i, j);
             *pixel = image::Rgb([color.x as u8, color.y as u8, color.z as u8]);
         }
