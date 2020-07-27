@@ -10,6 +10,19 @@ pub use std::f64::INFINITY;
 pub use ray::Ray;
 pub use vec3::Vec3;
 
+fn random_num() -> f64 {
+    let tmp = random::<f64>();
+    tmp / f64::MAX
+}
+fn random_vec() -> Vec3 {
+    let x = random::<i8>();
+    let y = random::<i8>();
+    let z = random::<i8>();
+    if x == 0 && y == 0 && z==0{
+        return random_vec();
+    }
+    Vec3::new(x as f64, y as f64, z as f64).unit()
+}
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct HitRecord {
     pub pos: Vec3,
@@ -94,10 +107,15 @@ impl Hittable for Sphere {
     }
 }
 
-fn ray_color(r: &Ray, world: &dyn Hittable) -> Vec3 {
+fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Vec3 {
+    if depth <= 0 {
+        return Vec3::new(0.0, 0.0, 0.0);
+    }
     let tmp = world.hit(r, 0.0, f64::MAX);
     if let Some(rec) = tmp {
-        return (rec.nor + Vec3::new(1.0, 1.0, 1.0)) * 0.5 * 255.0;
+        let dir = rec.nor + random_vec();
+        // return (rec.nor + Vec3::new(1.0, 1.0, 1.0)) * 0.5 * 255.0;
+        return ray_color(&Ray::new(rec.pos, dir), world, depth - 1) * 0.5;
     }
     let unit_dir = (r.dir).unit();
     let t = 0.5 * (unit_dir.y + 1.0);
@@ -144,14 +162,11 @@ impl Camera {
         )
     }
 }
-fn random_num() -> f64 {
-    let tmp = random::<f64>();
-    tmp / f64::MAX
-}
 fn sphere() {
     let i_h = 576;
     let i_w = 1024;
     let samples_per_pixel = 100;
+    let max_depth = 50;
     let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
     let bar = ProgressBar::new(i_h as u64);
 
@@ -174,7 +189,7 @@ fn sphere() {
                 let u = (i as f64 + random_num()) / ((i_w - 1) as f64);
                 let v = ((i_h - j) as f64 - random_num()) / ((i_h - 1) as f64);
                 let r = camera.get_ray(u, v);
-                color += ray_color(&r, &world);
+                color += ray_color(&r, &world, max_depth);
             }
             color = color / (samples_per_pixel as f64);
             let pixel = img.get_pixel_mut(i, j);
