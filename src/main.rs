@@ -228,6 +228,75 @@ impl Hittable for Sphere {
     }
 }
 
+fn random_scene() -> HittableList {
+    let mut world = HittableList { objects: vec![] };
+
+    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(0.0, -100.5, -1.0),
+        radius: 100.0,
+        mat_ptr: material_ground,
+    }));
+
+    for a in -11..11 {
+        for b in -11..11 {
+            let choose_mat = random::<f64>();
+            let center = Vec3::new(
+                a as f64 + 0.9 * random::<f64>(),
+                0.2,
+                b as f64 + 0.9 * random::<f64>(),
+            );
+            if ((center - Vec3::new(4.0, 0.2, 0.0)) as Vec3).length() > 0.9 {
+                if choose_mat < 0.8 {
+                    let albedo = vec3::Vec3::elemul(random_unit(), random_unit());
+                    let sphere_material = Arc::new(Lambertian::new(albedo));
+                    world.add(Box::new(Sphere {
+                        center: center,
+                        radius: 0.2,
+                        mat_ptr: sphere_material,
+                    }))
+                } else if choose_mat < 0.95 {
+                    let albedo = random_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5);
+                    let fuzz = random::<f64>().abs() / 2.0;
+                    let sphere_material = Arc::new(Metal::new(albedo, fuzz));
+                    world.add(Box::new(Sphere {
+                        center: center,
+                        radius: 0.2,
+                        mat_ptr: sphere_material,
+                    }))
+                } else {
+                    let sphere_material = Arc::new(Dielectric::new(1.5));
+                    world.add(Box::new(Sphere {
+                        center: center,
+                        radius: 0.2,
+                        mat_ptr: sphere_material,
+                    }))
+                }
+            }
+        }
+    }
+    let material1 = Arc::new(Lambertian::new(Vec3::new(0.4, 0.2, 0.1)));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(-4.0, 1.0, 0.0),
+        radius: 1.0,
+        mat_ptr: material1,
+    }));
+    let material2 = Arc::new(Dielectric::new(1.5));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(0.0, 1.0, 0.0),
+        radius: 1.0,
+        mat_ptr: material2,
+    }));
+    let material3 = Arc::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.0));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(4.0, 1.0, 0.0),
+        radius: 1.0,
+        mat_ptr: material3,
+    }));
+
+    world
+}
+
 fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Vec3 {
     if depth <= 0 {
         return Vec3::new(0.0, 0.0, 0.0);
@@ -315,14 +384,14 @@ impl Camera {
     }
 }
 fn sphere() {
-    let i_h = 225;
-    let i_w = 400;
-    let samples_per_pixel = 100;
+    let i_h = 800;
+    let i_w = 1200;
+    let samples_per_pixel = 500;
     let max_depth = 50;
     let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
     let bar = ProgressBar::new(i_h as u64);
 
-    let mut world = HittableList { objects: vec![] };
+    let mut world = random_scene();
 
     // let r = (PI / 4.0).cos();
     // let material_left = Arc::new(Lambertian::new(Vec3::new(0.0, 0.0, 1.0)));
@@ -338,47 +407,47 @@ fn sphere() {
     //     mat_ptr: material_right,
     // }));
 
-    let material_center = Arc::new(Lambertian::new(Vec3::new(0.1, 0.2, 0.5)));
-    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
-    let material_left = Arc::new(Dielectric::new(1.5));
-    let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.0));
-    world.add(Box::new(Sphere {
-        center: Vec3::new(0.0, 0.0, -1.0),
-        radius: 0.5,
-        mat_ptr: material_center,
-    }));
-    world.add(Box::new(Sphere {
-        center: Vec3::new(0.0, -100.5, -1.0),
-        radius: 100.0,
-        mat_ptr: material_ground,
-    }));
-    world.add(Box::new(Sphere {
-        center: Vec3::new(-1.0, 0.0, -1.0),
-        radius: 0.5,
-        mat_ptr: material_left.clone(),
-    }));
-    world.add(Box::new(Sphere {
-        center: Vec3::new(-1.0, 0.0, -1.0),
-        radius: -0.45,
-        mat_ptr: material_left.clone(),
-    }));
-    world.add(Box::new(Sphere {
-        center: Vec3::new(1.0, 0.0, -1.0),
-        radius: 0.5,
-        mat_ptr: material_right,
-    }));
+    // let material_center = Arc::new(Lambertian::new(Vec3::new(0.1, 0.2, 0.5)));
+    // let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
+    // let material_left = Arc::new(Dielectric::new(1.5));
+    // let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.0));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(0.0, 0.0, -1.0),
+    //     radius: 0.5,
+    //     mat_ptr: material_center,
+    // }));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(0.0, -100.5, -1.0),
+    //     radius: 100.0,
+    //     mat_ptr: material_ground,
+    // }));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(-1.0, 0.0, -1.0),
+    //     radius: 0.5,
+    //     mat_ptr: material_left.clone(),
+    // }));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(-1.0, 0.0, -1.0),
+    //     radius: -0.45,
+    //     mat_ptr: material_left.clone(),
+    // }));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(1.0, 0.0, -1.0),
+    //     radius: 0.5,
+    //     mat_ptr: material_right,
+    // }));
 
-    let lookfrom = Vec3::new(3.0, 3.0, 2.0);
-    let lookat = Vec3::new(0.0, 0.0, -1.0);
+    let lookfrom = Vec3::new(13.0, 2.0, 3.0);
+    let lookat = Vec3::new(0.0, 0.0, 0.0);
     let vup = Vec3::new(0.0, 1.0, 0.0);
-    let dist_to_focus = (lookfrom - lookat).length();
-    let aperture = 2.0;
+    let dist_to_focus = 10.0;
+    let aperture = 0.1;
     let camera = Camera::new(
         &lookfrom,
         &lookat,
         &vup,
         20.0,
-        16.0 / 9.0,
+        3.0 / 2.0,
         aperture,
         dist_to_focus,
     );
