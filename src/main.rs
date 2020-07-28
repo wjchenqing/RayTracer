@@ -14,6 +14,16 @@ pub use vec3::Vec3;
 fn random_num() -> f64 {
     random::<f64>()
 }
+fn random_unit() -> Vec3 {
+    let x = random::<i32>();
+    let y = random::<i32>();
+    let z = random::<i32>();
+    let tmp = Vec3::new(x as f64, y as f64, z as f64);
+    if tmp.length() == 0.0 {
+        return random_unit();
+    }
+    -tmp.unit()
+}
 fn random_vec(nor: &Vec3) -> Vec3 {
     let x = random::<i32>();
     let y = random::<i32>();
@@ -26,6 +36,13 @@ fn random_vec(nor: &Vec3) -> Vec3 {
         return tmp.unit();
     }
     -tmp.unit()
+}
+fn random_in_unit_disk() -> Vec3 {
+    let p = Vec3::new(random::<f64>(), random::<f64>(), 0.0);
+    if p.squared_length() >= 1.0 {
+        return random_in_unit_disk();
+    }
+    p
 }
 
 pub trait Material: Sync + Send {
@@ -115,10 +132,7 @@ impl Metal {
 impl Material for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
         let reflected = reflect(r_in.dir.unit(), rec.nor);
-        let scattered = Ray::new(
-            rec.pos,
-            reflected + random_vec(&Vec3::new(0.0, 0.0, 0.0)) * self.fuzz,
-        );
+        let scattered = Ray::new(rec.pos, reflected + random_unit() * self.fuzz);
         if reflected * rec.nor > 0.0 {
             return Some((self.albedo, scattered));
         }
@@ -243,9 +257,21 @@ pub struct Camera {
     pub horizontal: Vec3,      // = Vec3::new(v_w, 0.0, 0.0);
     pub vertical: Vec3,        // = Vec3::new(0.0, v_h, 0.0);
     pub low_left_corner: Vec3, // = ori - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, f_l);
+    pub u: Vec3,
+    pub v: Vec3,
+    pub w: Vec3,
+    pub len_radius: f64,
 }
 impl Camera {
-    pub fn new(lookform: &Vec3, lookat: &Vec3, vup: &Vec3, vfov: f64, aspect_ratio: f64) -> Self {
+    pub fn new(
+        lookform: &Vec3,
+        lookat: &Vec3,
+        vup: &Vec3,
+        vfov: f64,
+        aspect_ratio: f64,
+        aperture: f64,
+        focus_dist: f64,
+    ) -> Self {
         let theta = vfov / 180.0 * PI;
         let h = (theta / 2.0).tan();
         let viewport_height = 2.0 * h;
@@ -260,9 +286,9 @@ impl Camera {
         let f_l = 1.0;
 
         let ori = *lookform;
-        let horizontal: Vec3 = u * viewport_width;
-        let vertical: Vec3 = v * viewport_height;
-        let low_left_corner = ori - horizontal / 2.0 - vertical / 2.0 - w;
+        let horizontal: Vec3 = u * (viewport_width * focus_dist);
+        let vertical: Vec3 = v * (viewport_height * focus_dist);
+        let low_left_corner = ori - horizontal / 2.0 - vertical / 2.0 - w * focus_dist;
 
         Self {
             ori,
@@ -273,20 +299,26 @@ impl Camera {
             v_h,
             v_w,
             f_l,
+            u,
+            v,
+            w,
+            len_radius: aperture / 2.0,
         }
     }
     pub fn get_ray(&self, s: f64, t: f64) -> Ray {
+        let rd: Vec3 = random_in_unit_disk() * self.len_radius;
+        let offset = self.u * rd.x * rd.y;
         Ray::new(
-            self.ori,
-            self.low_left_corner + self.horizontal * s + self.vertical * t - self.ori,
+            self.ori + offset,
+            self.low_left_corner + self.horizontal * s + self.vertical * t - self.ori - offset,
         )
     }
 }
 fn sphere() {
-    let i_h = 576;
-    let i_w = 1024;
+    let i_h = 225;
+    let i_w = 400;
     let samples_per_pixel = 100;
-    let max_depth = 200;
+    let max_depth = 50;
     let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
     let bar = ProgressBar::new(i_h as u64);
 
@@ -336,12 +368,19 @@ fn sphere() {
         mat_ptr: material_right,
     }));
 
+    let lookfrom = Vec3::new(3.0, 3.0, 2.0);
+    let lookat = Vec3::new(0.0, 0.0, -1.0);
+    let vup = Vec3::new(0.0, 1.0, 0.0);
+    let dist_to_focus = (lookfrom - lookat).length();
+    let aperture = 2.0;
     let camera = Camera::new(
-        &Vec3::new(-2.0, 2.0, 1.0),
-        &Vec3::new(0.0, 0.0, -1.0),
-        &Vec3::new(0.0, 1.0, 0.0),
-        90.0,
+        &lookfrom,
+        &lookat,
+        &vup,
+        20.0,
         16.0 / 9.0,
+        aperture,
+        dist_to_focus,
     );
 
     for j in 0..i_h {
