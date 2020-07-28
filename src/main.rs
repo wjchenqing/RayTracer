@@ -231,10 +231,10 @@ impl Hittable for Sphere {
 fn random_scene() -> HittableList {
     let mut world = HittableList { objects: vec![] };
 
-    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
+    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5)));
     world.add(Box::new(Sphere {
-        center: Vec3::new(0.0, -100.5, -1.0),
-        radius: 100.0,
+        center: Vec3::new(0.0, -1000.0, -1.0),
+        radius: 1000.0,
         mat_ptr: material_ground,
     }));
 
