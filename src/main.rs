@@ -51,16 +51,23 @@ fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
 }
 pub struct Metal {
     pub albedo: Vec3,
+    pub fuzz: f64,
 }
 impl Metal {
-    pub fn new(albedo: Vec3) -> Self {
-        Self { albedo }
+    pub fn new(albedo: Vec3, mut f: f64) -> Self {
+        if f > 1.0 {
+            f = 1.0;
+        }
+        Self { albedo, fuzz: f }
     }
 }
 impl Material for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
         let reflected = reflect(&r_in.dir.unit(), &rec.nor);
-        let scattered = Ray::new(rec.pos, reflected);
+        let scattered = Ray::new(
+            rec.pos,
+            reflected + random_vec(&Vec3::new(0.0, 0.0, 0.0)) * self.fuzz,
+        );
         if reflected * rec.nor > 0.0 {
             return Some((self.albedo, scattered));
         }
@@ -227,8 +234,8 @@ fn sphere() {
     let mut world = HittableList { objects: vec![] };
     let material_center = Arc::new(Lambertian::new(Vec3::new(0.7, 0.3, 0.3)));
     let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
-    let material_left = Arc::new(Metal::new(Vec3::new(0.8, 0.8, 0.8)));
-    let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2)));
+    let material_left = Arc::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.3));
+    let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.3));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, 0.0, -1.0),
         radius: 0.5,
