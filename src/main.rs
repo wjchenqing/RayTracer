@@ -246,8 +246,12 @@ pub struct Camera {
     pub low_left_corner: Vec3, // = ori - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, f_l);
 }
 impl Camera {
-    pub fn new() -> Self {
-        let aspect_ratio = 16.0 / 9.0;
+    pub fn new(vfov: f64, aspect_ratio: f64) -> Self {
+        let theta = vfov / 180.0 * PI;
+        let h = (theta / 2.0).tan();
+        let viewport_height = 2.0 * h;
+        let viewport_width = aspect_ratio * viewport_height;
+
         let v_h = 2.0;
         let v_w = v_h * aspect_ratio;
         let f_l = 1.0;
@@ -284,32 +288,47 @@ fn sphere() {
     let bar = ProgressBar::new(i_h as u64);
 
     let mut world = HittableList { objects: vec![] };
-    let material_center = Arc::new(Lambertian::new(Vec3::new(0.1, 0.2, 0.5)));
-    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
-    let material_left = Arc::new(Dielectric::new(1.5));
-    let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.0));
+
+    let r = (PI / 4.0).cos();
+    let material_left = Arc::new(Lambertian::new(Vec3::new(0.0, 0.0, 1.0)));
+    let material_right = Arc::new(Lambertian::new(Vec3::new(1.0, 0.0, 0.0)));
     world.add(Box::new(Sphere {
-        center: Vec3::new(0.0, 0.0, -1.0),
-        radius: 0.5,
-        mat_ptr: material_center,
-    }));
-    world.add(Box::new(Sphere {
-        center: Vec3::new(0.0, -100.5, -1.0),
-        radius: 100.0,
-        mat_ptr: material_ground,
-    }));
-    world.add(Box::new(Sphere {
-        center: Vec3::new(-1.0, 0.0, -1.0),
-        radius: -0.4,
+        center: Vec3::new(-r, 0.0, -1.0),
+        radius: r,
         mat_ptr: material_left,
     }));
     world.add(Box::new(Sphere {
-        center: Vec3::new(1.0, 0.0, -1.0),
-        radius: 0.5,
+        center: Vec3::new(r, 0.0, -1.0),
+        radius: r,
         mat_ptr: material_right,
     }));
 
-    let camera = Camera::new();
+    // let material_center = Arc::new(Lambertian::new(Vec3::new(0.1, 0.2, 0.5)));
+    // let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
+    // let material_left = Arc::new(Dielectric::new(1.5));
+    // let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.0));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(0.0, 0.0, -1.0),
+    //     radius: 0.5,
+    //     mat_ptr: material_center,
+    // }));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(0.0, -100.5, -1.0),
+    //     radius: 100.0,
+    //     mat_ptr: material_ground,
+    // }));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(-1.0, 0.0, -1.0),
+    //     radius: -0.4,
+    //     mat_ptr: material_left,
+    // }));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(1.0, 0.0, -1.0),
+    //     radius: 0.5,
+    //     mat_ptr: material_right,
+    // }));
+
+    let camera = Camera::new(90.0, 16.0 / 9.0);
 
     for j in 0..i_h {
         for i in 0..i_w {
