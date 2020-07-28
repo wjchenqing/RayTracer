@@ -49,6 +49,37 @@ impl Lambertian {
 fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
     *v - *n * (*v * *n) * 2.0
 }
+fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
+    let cos_theta = -*uv * *n;
+    let r_out_perp: Vec3 = (*uv + *n * cos_theta) * etai_over_etat;
+    let mut tmp = 1.0 - r_out_perp.squared_length();
+    if tmp < 0.0 {
+        tmp = -tmp;
+    }
+    let r_out_parallel = *n * (-tmp.sqrt());
+    r_out_parallel + r_out_perp
+}
+pub struct Dielectric {
+    pub ref_idx: f64,
+}
+impl Dielectric {
+    pub fn new(ri: f64) -> Self{
+        Self{ref_idx: ri}
+    }
+}
+impl Material for Dielectric {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
+        let attenuation = Vec3::new(1.0,1.0, 1.0);
+        let mut etai_over_etat = self.ref_idx;
+        if rec.front_face == true {
+            etai_over_etat = 1.0 / self.ref_idx;
+        }
+        let unit_dir = r_in.dir.unit();
+        let refracted = refract(&unit_dir, &rec.nor, etai_over_etat);
+        Some((attenuation, Ray::new(rec.pos, refracted)))
+    }
+}
+
 pub struct Metal {
     pub albedo: Vec3,
     pub fuzz: f64,
@@ -232,10 +263,10 @@ fn sphere() {
     let bar = ProgressBar::new(i_h as u64);
 
     let mut world = HittableList { objects: vec![] };
-    let material_center = Arc::new(Lambertian::new(Vec3::new(0.7, 0.3, 0.3)));
+    let material_center = Arc::new(Dielectric::new(1.5));
     let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
-    let material_left = Arc::new(Metal::new(Vec3::new(0.8, 0.8, 0.8), 0.3));
-    let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.3));
+    let material_left = Arc::new(Dielectric::new(1.5));
+    let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 1.0));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, 0.0, -1.0),
         radius: 0.5,
