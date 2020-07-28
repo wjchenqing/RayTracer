@@ -6,13 +6,13 @@ use indicatif::ProgressBar;
 pub use rand::random;
 pub use std::f64::consts::PI;
 pub use std::f64::INFINITY;
+pub use std::sync::Arc;
 
 pub use ray::Ray;
 pub use vec3::Vec3;
 
 fn random_num() -> f64 {
-    let tmp = random::<f64>();
-    tmp / f64::MAX
+    random::<f64>()
 }
 fn random_vec(nor: &Vec3) -> Vec3 {
     let x = random::<i32>();
@@ -27,14 +27,56 @@ fn random_vec(nor: &Vec3) -> Vec3 {
     }
     -tmp.unit()
 }
-#[derive(Clone, Copy, Debug, PartialEq)]
+
+pub trait Material: Sync + Send {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)>;
+}
+pub struct Lambertian {
+    albedo: Vec3,
+}
+impl Material for Lambertian {
+    fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
+        let scatter_direction = rec.nor + random_vec(&rec.nor);
+        let scattered = Ray::new(rec.pos, scatter_direction);
+        Some((self.albedo, scattered))
+    }
+}
+impl Lambertian {
+    pub fn new(albedo: Vec3) -> Self {
+        Self { albedo }
+    }
+}
+fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
+    *v - *n * (*v * *n) * 2.0
+}
+pub struct Metal {
+    pub albedo: Vec3,
+}
+impl Metal {
+    pub fn new(albedo: Vec3) -> Self {
+        Self { albedo }
+    }
+}
+impl Material for Metal {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
+        let reflected = reflect(&r_in.dir.unit(), &rec.nor);
+        let scattered = Ray::new(rec.pos, reflected);
+        if reflected * rec.nor > 0.0 {
+            return Some((self.albedo, scattered));
+        }
+        None
+    }
+}
+
+#[derive(Clone)]
 pub struct HitRecord {
     pub pos: Vec3,
     pub nor: Vec3,
     pub t: f64,
     pub front_face: bool,
+    pub mat_ptr: Arc<dyn Material>,
 }
-pub trait Hittable {
+pub trait Hittable: Sync + Send {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
 }
 pub struct HittableList {
@@ -52,7 +94,7 @@ impl Hittable for HittableList {
         for i in self.objects.iter() {
             let tmp_rec = i.hit(r, t_min, closest_so_far);
             if let Some(tmp) = tmp_rec {
-                hit_anything = tmp_rec;
+                hit_anything = Some(tmp.clone());
                 closest_so_far = tmp.t;
             }
         }
@@ -60,10 +102,11 @@ impl Hittable for HittableList {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone)]
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f64,
+    pub mat_ptr: Arc<dyn Material>,
 }
 impl Hittable for Sphere {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
@@ -88,6 +131,7 @@ impl Hittable for Sphere {
                     pos,
                     nor,
                     front_face: flag,
+                    mat_ptr: self.mat_ptr.clone(),
                 });
             } else {
                 let tmp = (-_b + root) / a;
@@ -103,6 +147,7 @@ impl Hittable for Sphere {
                         pos,
                         nor,
                         front_face: flag,
+                        mat_ptr: self.mat_ptr.clone(),
                     });
                 }
             }
@@ -117,13 +162,18 @@ fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Vec3 {
     }
     let tmp = world.hit(r, 0.001, f64::MAX);
     if let Some(rec) = tmp {
-        let dir = rec.nor + random_vec(&rec.nor);
+        // let dir = rec.nor + random_vec(&rec.nor);
         // return (rec.nor + Vec3::new(1.0, 1.0, 1.0)) * 0.5 * 255.0;
-        return ray_color(&Ray::new(rec.pos, dir), world, depth - 1) * 0.5;
+        // return ray_color(&Ray::new(rec.pos, dir), world, depth - 1) * 0.5;
+        let tmp = rec.mat_ptr.scatter(r, &rec);
+        if let Some((attenuation, scattered)) = tmp {
+            return vec3::Vec3::elemul(attenuation, ray_color(&scattered, world, depth - 1));
+        }
+        return Vec3::new(0.0, 0.0, 0.0);
     }
     let unit_dir = (r.dir).unit();
     let t = 0.5 * (unit_dir.y + 1.0);
-    Vec3::new(255.0 - 127.5 * t, 255.0 - 76.5 * t, 255.0)
+    Vec3::new(255.0 - 127.5 * t, 255.0 - 76.5 * t, 255.0) / 255.0
 }
 
 pub struct Camera {
@@ -175,13 +225,29 @@ fn sphere() {
     let bar = ProgressBar::new(i_h as u64);
 
     let mut world = HittableList { objects: vec![] };
+    let material_center = Arc::new(Lambertian::new(Vec3::new(0.7, 0.3, 0.3)));
+    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
+    let material_left = Arc::new(Metal::new(Vec3::new(0.8, 0.8, 0.8)));
+    let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2)));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, 0.0, -1.0),
         radius: 0.5,
+        mat_ptr: material_center,
     }));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, -100.5, -1.0),
         radius: 100.0,
+        mat_ptr: material_ground,
+    }));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(-1.0, 0.0, -1.0),
+        radius: 0.5,
+        mat_ptr: material_left,
+    }));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(1.0, 0.0, -1.0),
+        radius: 0.5,
+        mat_ptr: material_right,
     }));
 
     let camera = Camera::new();
@@ -198,9 +264,9 @@ fn sphere() {
             color = color / (samples_per_pixel as f64);
             let pixel = img.get_pixel_mut(i, j);
             *pixel = image::Rgb([
-                ((color.x / 255.0).sqrt() * 255.0) as u8,
-                ((color.y / 255.0).sqrt() * 255.0) as u8,
-                ((color.z / 255.0).sqrt() * 255.0) as u8,
+                (color.x.sqrt() * 255.0) as u8,
+                (color.y.sqrt() * 255.0) as u8,
+                (color.z.sqrt() * 255.0) as u8,
             ]);
         }
         bar.inc(1);
