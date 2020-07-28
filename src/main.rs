@@ -46,22 +46,19 @@ impl Lambertian {
         Self { albedo }
     }
 }
-fn reflect(v: &Vec3, n: &Vec3) -> Vec3 {
-    *v - *n * (*v * *n) * 2.0
+fn reflect(v: Vec3, n: Vec3) -> Vec3 {
+    v - n * (v * n) * 2.0
 }
 fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
     let cos_theta = -*uv * *n;
     let r_out_perp: Vec3 = (*uv + *n * cos_theta) * etai_over_etat;
-    let mut tmp = 1.0 - r_out_perp.squared_length();
-    if tmp < 0.0 {
-        tmp = -tmp;
-    }
+    let tmp = 1.0 - r_out_perp.squared_length().abs();
     let r_out_parallel = *n * (-tmp.sqrt());
     r_out_parallel + r_out_perp
 }
 fn schlick(cosine: f64, ref_idx: f64) -> f64 {
-    let mut r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
-    r0 *= r0;
+    let r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
+    let r0 = r0 * r0;
     r0 + (1.0 - r0) * ((1.0 - cosine).powi(5))
 }
 pub struct Dielectric {
@@ -75,27 +72,29 @@ impl Dielectric {
 impl Material for Dielectric {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
         let attenuation = Vec3::new(1.0, 1.0, 1.0);
-        let mut etai_over_etat = self.ref_idx;
-        if rec.front_face {
-            etai_over_etat = 1.0 / self.ref_idx;
-        }
+        let etai_over_etat = if rec.front_face {
+            1.0 / self.ref_idx
+        } else {
+            self.ref_idx
+        };
         let unit_dir = r_in.dir.unit();
-        let mut cos_theta = (-unit_dir) * r_in.dir;
-        if cos_theta > 1.0 {
-            cos_theta = 1.0;
-        }
+        let cos_theta = if (-unit_dir) * r_in.dir < 1.0 {
+            (-unit_dir) * r_in.dir
+        } else {
+            1.0
+        };
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
-        if etai_over_etat * sin_theta > 1.0 {
-            let reflected = reflect(&unit_dir, &rec.nor);
-            return Some((attenuation, Ray::new(rec.pos, reflected)));
+        if (etai_over_etat * sin_theta) > 1.0 {
+            let reflected = reflect(unit_dir, rec.nor);
+            Some((attenuation, Ray::new(rec.pos, reflected)))
         } else {
             let reflect_prob = schlick(cos_theta, etai_over_etat);
-            if random_num() < reflect_prob {
-                let reflected = reflect(&unit_dir, &rec.nor);
-                return Some((attenuation, Ray::new(rec.pos, reflected)));
+            if random::<f64>() < reflect_prob {
+                let reflected = reflect(unit_dir, rec.nor);
+                Some((attenuation, Ray::new(rec.pos, reflected)))
             } else {
                 let refracted = refract(&unit_dir, &rec.nor, etai_over_etat);
-                return Some((attenuation, Ray::new(rec.pos, refracted)));
+                Some((attenuation, Ray::new(rec.pos, refracted)))
             }
         }
     }
@@ -115,7 +114,7 @@ impl Metal {
 }
 impl Material for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
-        let reflected = reflect(&r_in.dir.unit(), &rec.nor);
+        let reflected = reflect(r_in.dir.unit(), rec.nor);
         let scattered = Ray::new(
             rec.pos,
             reflected + random_vec(&Vec3::new(0.0, 0.0, 0.0)) * self.fuzz,
@@ -181,7 +180,7 @@ impl Hittable for Sphere {
             if (tmp < t_max) && (tmp > t_min) {
                 let pos = r.at(tmp);
                 let mut nor = (pos - self.center) / self.radius;
-                let flag = (r.dir * nor) < 0.0;
+                let flag = (r.dir * nor.clone()) < 0.0;
                 if !flag {
                     nor = -nor;
                 }
@@ -246,20 +245,24 @@ pub struct Camera {
     pub low_left_corner: Vec3, // = ori - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, f_l);
 }
 impl Camera {
-    pub fn new(vfov: f64, aspect_ratio: f64) -> Self {
+    pub fn new(lookform: &Vec3, lookat: &Vec3, vup: &Vec3, vfov: f64, aspect_ratio: f64) -> Self {
         let theta = vfov / 180.0 * PI;
         let h = (theta / 2.0).tan();
         let viewport_height = 2.0 * h;
         let viewport_width = aspect_ratio * viewport_height;
 
+        let w: Vec3 = (*lookform - *lookat).unit();
+        let u = vec3::Vec3::cross(*vup, w).unit();
+        let v = vec3::Vec3::cross(w, u);
+
         let v_h = 2.0;
         let v_w = v_h * aspect_ratio;
         let f_l = 1.0;
 
-        let ori = Vec3::zero();
-        let horizontal = Vec3::new(v_w, 0.0, 0.0);
-        let vertical = Vec3::new(0.0, v_h, 0.0);
-        let low_left_corner = ori - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, f_l);
+        let ori = *lookform;
+        let horizontal: Vec3 = u * viewport_width;
+        let vertical: Vec3 = v * viewport_height;
+        let low_left_corner = ori - horizontal / 2.0 - vertical / 2.0 - w;
 
         Self {
             ori,
@@ -272,10 +275,10 @@ impl Camera {
             f_l,
         }
     }
-    pub fn get_ray(&self, u: f64, v: f64) -> Ray {
+    pub fn get_ray(&self, s: f64, t: f64) -> Ray {
         Ray::new(
             self.ori,
-            self.low_left_corner + self.horizontal * u + self.vertical * v - self.ori,
+            self.low_left_corner + self.horizontal * s + self.vertical * t - self.ori,
         )
     }
 }
@@ -289,46 +292,57 @@ fn sphere() {
 
     let mut world = HittableList { objects: vec![] };
 
-    let r = (PI / 4.0).cos();
-    let material_left = Arc::new(Lambertian::new(Vec3::new(0.0, 0.0, 1.0)));
-    let material_right = Arc::new(Lambertian::new(Vec3::new(1.0, 0.0, 0.0)));
-    world.add(Box::new(Sphere {
-        center: Vec3::new(-r, 0.0, -1.0),
-        radius: r,
-        mat_ptr: material_left,
-    }));
-    world.add(Box::new(Sphere {
-        center: Vec3::new(r, 0.0, -1.0),
-        radius: r,
-        mat_ptr: material_right,
-    }));
-
-    // let material_center = Arc::new(Lambertian::new(Vec3::new(0.1, 0.2, 0.5)));
-    // let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
-    // let material_left = Arc::new(Dielectric::new(1.5));
-    // let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.0));
+    // let r = (PI / 4.0).cos();
+    // let material_left = Arc::new(Lambertian::new(Vec3::new(0.0, 0.0, 1.0)));
+    // let material_right = Arc::new(Lambertian::new(Vec3::new(1.0, 0.0, 0.0)));
     // world.add(Box::new(Sphere {
-    //     center: Vec3::new(0.0, 0.0, -1.0),
-    //     radius: 0.5,
-    //     mat_ptr: material_center,
-    // }));
-    // world.add(Box::new(Sphere {
-    //     center: Vec3::new(0.0, -100.5, -1.0),
-    //     radius: 100.0,
-    //     mat_ptr: material_ground,
-    // }));
-    // world.add(Box::new(Sphere {
-    //     center: Vec3::new(-1.0, 0.0, -1.0),
-    //     radius: -0.4,
+    //     center: Vec3::new(-r, 0.0, -1.0),
+    //     radius: r,
     //     mat_ptr: material_left,
     // }));
     // world.add(Box::new(Sphere {
-    //     center: Vec3::new(1.0, 0.0, -1.0),
-    //     radius: 0.5,
+    //     center: Vec3::new(r, 0.0, -1.0),
+    //     radius: r,
     //     mat_ptr: material_right,
     // }));
 
-    let camera = Camera::new(90.0, 16.0 / 9.0);
+    let material_center = Arc::new(Lambertian::new(Vec3::new(0.1, 0.2, 0.5)));
+    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
+    let material_left = Arc::new(Dielectric::new(1.5));
+    let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.0));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(0.0, 0.0, -1.0),
+        radius: 0.5,
+        mat_ptr: material_center,
+    }));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(0.0, -100.5, -1.0),
+        radius: 100.0,
+        mat_ptr: material_ground,
+    }));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(-1.0, 0.0, -1.0),
+        radius: 0.5,
+        mat_ptr: material_left.clone(),
+    }));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(-1.0, 0.0, -1.0),
+        radius: -0.45,
+        mat_ptr: material_left.clone(),
+    }));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(1.0, 0.0, -1.0),
+        radius: 0.5,
+        mat_ptr: material_right,
+    }));
+
+    let camera = Camera::new(
+        &Vec3::new(-2.0, 2.0, 1.0),
+        &Vec3::new(0.0, 0.0, -1.0),
+        &Vec3::new(0.0, 1.0, 0.0),
+        90.0,
+        16.0 / 9.0,
+    );
 
     for j in 0..i_h {
         for i in 0..i_w {
