@@ -59,18 +59,23 @@ pub trait Material: Sync + Send {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)>;
 }
 pub struct Lambertian {
-    albedo: Vec3,
+    pub albedo: Arc<dyn Texture>,
 }
 impl Material for Lambertian {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
         let scatter_direction = rec.nor + random_vec(&rec.nor);
         let scattered = Ray::new(rec.pos, scatter_direction);
-        Some((self.albedo, scattered))
+        Some((self.albedo.value(rec.u, rec.v, &rec.pos), scattered))
     }
 }
 impl Lambertian {
     pub fn new(albedo: Vec3) -> Self {
-        Self { albedo }
+        Self {
+            albedo: Arc::new(SolidColor::new(albedo)),
+        }
+    }
+    pub fn new_from_arc(a: Arc<dyn Texture>) -> Self {
+        Self { albedo: a }
     }
 }
 fn reflect(v: Vec3, n: Vec3) -> Vec3 {
@@ -155,6 +160,8 @@ pub struct HitRecord {
     pub pos: Vec3,
     pub nor: Vec3,
     pub t: f64,
+    pub u: f64,
+    pub v: f64,
     pub front_face: bool,
     pub mat_ptr: Arc<dyn Material>,
 }
@@ -184,6 +191,11 @@ impl Hittable for HittableList {
     }
 }
 
+fn get_sphere_uv(p: &Vec3) -> (f64, f64) {
+    let phi = p.z.atan2(p.x);
+    let theta = p.y.asin();
+    (1.0 - (phi + PI) / 2.0 / PI, (theta + PI / 2.0) / PI)
+}
 #[derive(Clone)]
 pub struct Sphere {
     pub center: Vec3,
@@ -208,12 +220,15 @@ impl Hittable for Sphere {
                 if !flag {
                     nor = -nor;
                 }
+                let (u, v) = get_sphere_uv(&((pos.copy() - self.center) / self.radius));
                 return Some(HitRecord {
                     t: tmp,
                     pos,
                     nor,
                     front_face: flag,
                     mat_ptr: self.mat_ptr.clone(),
+                    u,
+                    v,
                 });
             } else {
                 let tmp = (-_b + root) / a;
@@ -224,12 +239,15 @@ impl Hittable for Sphere {
                     if !flag {
                         nor = -nor;
                     }
+                    let (u, v) = get_sphere_uv(&((pos.copy() - self.center) / self.radius));
                     return Some(HitRecord {
                         t: tmp,
                         pos,
                         nor,
                         front_face: flag,
                         mat_ptr: self.mat_ptr.clone(),
+                        u,
+                        v,
                     });
                 }
             }
@@ -238,14 +256,68 @@ impl Hittable for Sphere {
     }
 }
 
+pub trait Texture: Sync + Send {
+    fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3;
+}
+pub struct SolidColor {
+    pub color_value: Vec3,
+}
+impl SolidColor {
+    pub fn new(c: Vec3) -> Self {
+        Self { color_value: c }
+    }
+}
+impl Texture for SolidColor {
+    fn value(&self, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
+        self.color_value
+    }
+}
+pub struct CheckerTexture {
+    pub odd: Arc<dyn Texture>,
+    pub even: Arc<dyn Texture>,
+}
+impl CheckerTexture {
+    pub fn new(t0: &Arc<dyn Texture>, t1: &Arc<dyn Texture>) -> Self {
+        Self {
+            even: t0.clone(),
+            odd: t1.clone(),
+        }
+    }
+    pub fn new_from_color(c1: &Vec3, c2: &Vec3) -> Self {
+        Self {
+            even: Arc::new(SolidColor::new(*c1)),
+            odd: Arc::new(SolidColor::new(*c2)),
+        }
+    }
+}
+impl Texture for CheckerTexture {
+    fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
+        let sines = (10.0 * p.x).sin() * (10.0 * p.y).sin() * (10.0 * p.z).sin();
+        if sines < 0.0 {
+            self.odd.value(u, v, p)
+        } else {
+            self.even.value(u, v, p)
+        }
+    }
+}
+
 fn random_scene() -> HittableList {
     let mut world = HittableList { objects: vec![] };
 
-    let material_ground = Arc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5)));
+    // let material_ground = Arc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5)));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(0.0, -1000.0, -1.0),
+    //     radius: 1000.0,
+    //     mat_ptr: material_ground,
+    // }));
+    let checker = Arc::new(CheckerTexture::new_from_color(
+        &Vec3::new(0.2, 0.3, 0.1),
+        &Vec3::new(0.9, 0.9, 0.9),
+    ));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, -1000.0, -1.0),
         radius: 1000.0,
-        mat_ptr: material_ground,
+        mat_ptr: Arc::new(Lambertian::new_from_arc(checker)),
     }));
 
     for a in -11..11 {
@@ -451,7 +523,7 @@ fn sphere() {
     let lookat = Vec3::new(0.0, 0.0, 0.0);
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 10.0;
-    let aperture = 0.1;
+    let aperture = 0.5;
     let camera = Camera::new(
         &lookfrom,
         &lookat,
