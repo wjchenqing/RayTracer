@@ -168,7 +168,7 @@ pub struct HitRecord {
     pub mat_ptr: Arc<dyn Material>,
 }
 pub trait Hittable: Sync + Send {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
     fn bounding_box(&self, t0: f64, t1: f64) -> Option<AABB>;
 }
 pub struct HittableList {
@@ -180,11 +180,11 @@ impl HittableList {
     }
 }
 impl Hittable for HittableList {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let mut hit_anything: Option<HitRecord> = None;
         let mut closest_so_far = t_max;
         for i in self.objects.iter() {
-            let tmp_rec = i.hit(r, t_min, closest_so_far);
+            let tmp_rec = i.hit(ray, t_min, closest_so_far);
             if let Some(tmp) = tmp_rec {
                 hit_anything = Some(tmp.clone());
                 closest_so_far = tmp.t;
@@ -240,10 +240,10 @@ pub struct Sphere {
     pub mat_ptr: Arc<dyn Material>,
 }
 impl Hittable for Sphere {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let oc: Vec3 = r.ori.copy() - self.center.copy();
-        let a = r.dir.squared_length();
-        let _b = oc * r.dir;
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let oc: Vec3 = ray.ori.copy() - self.center.copy();
+        let a = ray.dir.squared_length();
+        let _b = oc * ray.dir;
         let c = oc.squared_length() - self.radius * self.radius;
         let discriminant = _b * _b - a * c;
 
@@ -251,9 +251,9 @@ impl Hittable for Sphere {
             let root = discriminant.sqrt();
             let tmp = (-_b - root) / a;
             if (tmp < t_max) && (tmp > t_min) {
-                let pos = r.at(tmp);
+                let pos = ray.at(tmp);
                 let mut nor = (pos - self.center) / self.radius;
-                let flag = (r.dir * nor) < 0.0;
+                let flag = (ray.dir * nor) < 0.0;
                 if !flag {
                     nor = -nor;
                 }
@@ -270,9 +270,9 @@ impl Hittable for Sphere {
             } else {
                 let tmp = (-_b + root) / a;
                 if (tmp < t_max) && (tmp > t_min) {
-                    let pos = r.at(tmp);
+                    let pos = ray.at(tmp);
                     let mut nor = (pos - self.center) / self.radius;
-                    let flag = (r.dir * nor) < 0.0;
+                    let flag = (ray.dir * nor) < 0.0;
                     if !flag {
                         nor = -nor;
                     }
@@ -305,17 +305,17 @@ pub struct BvhNode {
     pub _box: AABB,
 }
 impl Hittable for BvhNode {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        if self._box.hit(r, &t_min, &t_max) == None {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        if self._box.hit(ray, &t_min, &t_max) == None {
             return None;
         }
-        if let Some(tmp1) = self.left.hit(r, t_min, t_max) {
-            if let Some(tmp2) = self.right.hit(r, t_min, t_max) {
+        if let Some(tmp1) = self.left.hit(ray, t_min, t_max) {
+            if let Some(tmp2) = self.right.hit(ray, t_min, t_max) {
                 return Some(tmp2);
             } else {
                 return Some(tmp1);
             }
-        } else if let Some(tmp2) = self.right.hit(r, t_min, t_max) {
+        } else if let Some(tmp2) = self.right.hit(ray, t_min, t_max) {
             return Some(tmp2);
         }
         None
@@ -402,13 +402,13 @@ impl AABB {
     pub fn new(a: &Vec3, b: &Vec3) -> Self {
         Self { _min: *a, _max: *b }
     }
-    pub fn hit(&self, r: &Ray, tmin: &f64, tmax: &f64) -> Option<(f64, f64)> {
+    pub fn hit(&self, ray: &Ray, tmin: &f64, tmax: &f64) -> Option<(f64, f64)> {
         let mut t_min = *tmin;
         let mut t_max = *tmax;
 
-        let inv = 1.0 / r.dir.x;
-        let mut t0 = ((self._min.x - r.ori.x) / r.dir.x).min((self._max.x - r.ori.x) / r.dir.x);
-        let mut t1 = ((self._min.x - r.ori.x) / r.dir.x).max((self._max.x - r.ori.x) / r.dir.x);
+        let inv = 1.0 / ray.dir.x;
+        let mut t0 = ((self._min.x - ray.ori.x) / ray.dir.x).min((self._max.x - ray.ori.x) / ray.dir.x);
+        let mut t1 = ((self._min.x - ray.ori.x) / ray.dir.x).max((self._max.x - ray.ori.x) / ray.dir.x);
         if inv < 0.0 {
             let tmp = t0;
             t0 = t1;
@@ -420,9 +420,9 @@ impl AABB {
             return None;
         }
 
-        let inv = 1.0 / r.dir.y;
-        let mut t0 = ((self._min.y - r.ori.y) / r.dir.y).min((self._max.y - r.ori.y) / r.dir.y);
-        let mut t1 = ((self._min.y - r.ori.y) / r.dir.y).max((self._max.y - r.ori.y) / r.dir.y);
+        let inv = 1.0 / ray.dir.y;
+        let mut t0 = ((self._min.y - ray.ori.y) / ray.dir.y).min((self._max.y - ray.ori.y) / ray.dir.y);
+        let mut t1 = ((self._min.y - ray.ori.y) / ray.dir.y).max((self._max.y - ray.ori.y) / ray.dir.y);
         if inv < 0.0 {
             let tmp = t0;
             t0 = t1;
@@ -434,9 +434,9 @@ impl AABB {
             return None;
         }
 
-        let inv = 1.0 / r.dir.z;
-        let mut t0 = ((self._min.z - r.ori.z) / r.dir.z).min((self._max.z - r.ori.z) / r.dir.z);
-        let mut t1 = ((self._min.z - r.ori.z) / r.dir.z).max((self._max.z - r.ori.z) / r.dir.z);
+        let inv = 1.0 / ray.dir.z;
+        let mut t0 = ((self._min.z - ray.ori.z) / ray.dir.z).min((self._max.z - ray.ori.z) / ray.dir.z);
+        let mut t1 = ((self._min.z - ray.ori.z) / ray.dir.z).max((self._max.z - ray.ori.z) / ray.dir.z);
         if inv < 0.0 {
             let tmp = t0;
             t0 = t1;
@@ -575,19 +575,19 @@ fn random_scene() -> HittableList {
     world
 }
 
-fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Vec3 {
+fn ray_color(ray: &Ray, world: &dyn Hittable, depth: i32) -> Vec3 {
     if depth <= 0 {
         return Vec3::new(0.0, 0.0, 0.0);
     }
-    let tmp = world.hit(r, 0.001, f64::MAX);
+    let tmp = world.hit(ray, 0.001, f64::MAX);
     if let Some(rec) = tmp {
-        let tmp = rec.mat_ptr.scatter(r, &rec);
+        let tmp = rec.mat_ptr.scatter(ray, &rec);
         if let Some((attenuation, scattered)) = tmp {
             return vec3::Vec3::elemul(attenuation, ray_color(&scattered, world, depth - 1));
         }
         return Vec3::new(0.0, 0.0, 0.0);
     }
-    let unit_dir = (r.dir).unit();
+    let unit_dir = (ray.dir).unit();
     let t = 0.5 * (unit_dir.y + 1.0);
     Vec3::new(255.0 - 127.5 * t, 255.0 - 76.5 * t, 255.0) / 255.0
 }
