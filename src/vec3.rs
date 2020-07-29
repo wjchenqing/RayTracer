@@ -17,11 +17,11 @@ impl Vec3 {
     }
 
     pub fn ones() -> Self {
-        Self::new(1.0, 1.0, 1.0)
+        Self::new(1.0 as f64, 1.0 as f64, 1.0 as f64)
     }
 
     pub fn zero() -> Self {
-        Self::new(0.0, 0.0, 0.0)
+        Self::new(0.0 as f64, 0.0 as f64, 0.0 as f64)
     }
 
     pub fn squared_length(&self) -> f64 {

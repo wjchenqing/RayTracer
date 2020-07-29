@@ -14,6 +14,16 @@ pub use vec3::Vec3;
 fn random_num() -> f64 {
     random::<f64>()
 }
+fn random_positive_unit() -> Vec3 {
+    let x = random::<f64>().abs();
+    let y = random::<f64>().abs();
+    let z = random::<f64>().abs();
+    let tmp = Vec3::new(x, y, z);
+    if tmp.length() > 1.0 {
+        return random_positive_unit();
+    }
+    tmp.unit()
+}
 fn random_unit() -> Vec3 {
     let x = random::<i32>();
     let y = random::<i32>();
@@ -248,19 +258,15 @@ fn random_scene() -> HittableList {
             );
             if ((center - Vec3::new(4.0, 0.2, 0.0)) as Vec3).length() > 0.9 {
                 if choose_mat < 0.8 {
-                    let albedo = vec3::Vec3::elemul(random_unit(), random_unit());
-                    let sphere_material = Arc::new(Lambertian::new(Vec3::new(
-                        albedo.x.abs(),
-                        albedo.y.abs(),
-                        albedo.z.abs(),
-                    )));
+                    let albedo = vec3::Vec3::elemul(random_positive_unit(), random_positive_unit());
+                    let sphere_material = Arc::new(Lambertian::new(albedo));
                     world.add(Box::new(Sphere {
                         center,
                         radius: 0.2,
                         mat_ptr: sphere_material,
                     }))
                 } else if choose_mat < 0.95 {
-                    let albedo = random_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5);
+                    let albedo = random_positive_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5);
                     let fuzz = random::<f64>().abs() / 2.0;
                     let sphere_material = Arc::new(Metal::new(albedo, fuzz));
                     world.add(Box::new(Sphere {
