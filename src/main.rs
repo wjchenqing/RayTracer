@@ -407,8 +407,10 @@ impl AABB {
         let mut t_max = *tmax;
 
         let inv = 1.0 / ray.dir.x;
-        let mut t0 = ((self._min.x - ray.ori.x) / ray.dir.x).min((self._max.x - ray.ori.x) / ray.dir.x);
-        let mut t1 = ((self._min.x - ray.ori.x) / ray.dir.x).max((self._max.x - ray.ori.x) / ray.dir.x);
+        let mut t0 =
+            ((self._min.x - ray.ori.x) / ray.dir.x).min((self._max.x - ray.ori.x) / ray.dir.x);
+        let mut t1 =
+            ((self._min.x - ray.ori.x) / ray.dir.x).max((self._max.x - ray.ori.x) / ray.dir.x);
         if inv < 0.0 {
             let tmp = t0;
             t0 = t1;
@@ -421,8 +423,10 @@ impl AABB {
         }
 
         let inv = 1.0 / ray.dir.y;
-        let mut t0 = ((self._min.y - ray.ori.y) / ray.dir.y).min((self._max.y - ray.ori.y) / ray.dir.y);
-        let mut t1 = ((self._min.y - ray.ori.y) / ray.dir.y).max((self._max.y - ray.ori.y) / ray.dir.y);
+        let mut t0 =
+            ((self._min.y - ray.ori.y) / ray.dir.y).min((self._max.y - ray.ori.y) / ray.dir.y);
+        let mut t1 =
+            ((self._min.y - ray.ori.y) / ray.dir.y).max((self._max.y - ray.ori.y) / ray.dir.y);
         if inv < 0.0 {
             let tmp = t0;
             t0 = t1;
@@ -435,8 +439,10 @@ impl AABB {
         }
 
         let inv = 1.0 / ray.dir.z;
-        let mut t0 = ((self._min.z - ray.ori.z) / ray.dir.z).min((self._max.z - ray.ori.z) / ray.dir.z);
-        let mut t1 = ((self._min.z - ray.ori.z) / ray.dir.z).max((self._max.z - ray.ori.z) / ray.dir.z);
+        let mut t0 =
+            ((self._min.z - ray.ori.z) / ray.dir.z).min((self._max.z - ray.ori.z) / ray.dir.z);
+        let mut t1 =
+            ((self._min.z - ray.ori.z) / ray.dir.z).max((self._max.z - ray.ori.z) / ray.dir.z);
         if inv < 0.0 {
             let tmp = t0;
             t0 = t1;
