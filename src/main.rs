@@ -251,7 +251,7 @@ fn random_scene() -> HittableList {
                     let albedo = vec3::Vec3::elemul(random_unit(), random_unit());
                     let sphere_material = Arc::new(Lambertian::new(albedo));
                     world.add(Box::new(Sphere {
-                        center: center,
+                        center,
                         radius: 0.2,
                         mat_ptr: sphere_material,
                     }))
@@ -260,14 +260,14 @@ fn random_scene() -> HittableList {
                     let fuzz = random::<f64>().abs() / 2.0;
                     let sphere_material = Arc::new(Metal::new(albedo, fuzz));
                     world.add(Box::new(Sphere {
-                        center: center,
+                        center,
                         radius: 0.2,
                         mat_ptr: sphere_material,
                     }))
                 } else {
                     let sphere_material = Arc::new(Dielectric::new(1.5));
                     world.add(Box::new(Sphere {
-                        center: center,
+                        center,
                         radius: 0.2,
                         mat_ptr: sphere_material,
                     }))
