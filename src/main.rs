@@ -76,7 +76,7 @@ fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
 fn schlick(cosine: f64, ref_idx: f64) -> f64 {
     let r0 = (1.0 - ref_idx) / (1.0 + ref_idx);
     let r0 = r0 * r0;
-    r0 + (1.0 - r0) * ((1.0 - cosine).powi(5))
+    r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
 }
 pub struct Dielectric {
     pub ref_idx: f64,
@@ -95,8 +95,8 @@ impl Material for Dielectric {
             self.ref_idx
         };
         let unit_dir = r_in.dir.unit();
-        let cos_theta = if (-unit_dir) * r_in.dir < 1.0 {
-            (-unit_dir) * r_in.dir
+        let cos_theta = if (-unit_dir) * rec.nor < 1.0 {
+            (-unit_dir) * rec.nor
         } else {
             1.0
         };
@@ -391,7 +391,7 @@ fn sphere() {
     let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
     let bar = ProgressBar::new(i_h as u64);
 
-    let mut world = random_scene();
+    let world = random_scene();
 
     // let r = (PI / 4.0).cos();
     // let material_left = Arc::new(Lambertian::new(Vec3::new(0.0, 0.0, 1.0)));
