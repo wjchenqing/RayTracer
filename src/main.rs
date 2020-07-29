@@ -1,4 +1,4 @@
-#[allow(clippy::float_cmp)]
+#![allow(clippy::float_cmp)]
 mod ray;
 mod vec3;
 use image::{ImageBuffer, RgbImage};
@@ -44,7 +44,7 @@ fn random_vec(nor: &Vec3) -> Vec3 {
     if tmp.length() == 0.0 {
         return random_vec(nor);
     }
-    if tmp * nor.copy() > 0.0 {
+    if tmp * *nor > 0.0 {
         return tmp.unit();
     }
     -tmp.unit()
@@ -241,7 +241,7 @@ pub struct Sphere {
 }
 impl Hittable for Sphere {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let oc: Vec3 = ray.ori.copy() - self.center.copy();
+        let oc: Vec3 = ray.ori - self.center;
         let a = ray.dir.squared_length();
         let _b = oc * ray.dir;
         let c = oc.squared_length() - self.radius * self.radius;
@@ -257,7 +257,7 @@ impl Hittable for Sphere {
                 if !flag {
                     nor = -nor;
                 }
-                let (u, v) = get_sphere_uv(&((pos.copy() - self.center) / self.radius));
+                let (u, v) = get_sphere_uv(&((pos - self.center) / self.radius));
                 return Some(HitRecord {
                     t: tmp,
                     pos,
@@ -276,7 +276,7 @@ impl Hittable for Sphere {
                     if !flag {
                         nor = -nor;
                     }
-                    let (u, v) = get_sphere_uv(&((pos.copy() - self.center) / self.radius));
+                    let (u, v) = get_sphere_uv(&((pos - self.center) / self.radius));
                     return Some(HitRecord {
                         t: tmp,
                         pos,
@@ -412,9 +412,7 @@ impl AABB {
         let mut t1 =
             ((self._min.x - ray.ori.x) / ray.dir.x).max((self._max.x - ray.ori.x) / ray.dir.x);
         if inv < 0.0 {
-            let tmp = t0;
-            t0 = t1;
-            t1 = tmp;
+            std::mem::swap(&mut t0, &mut t1);
         }
         t_min = t0.max(t_min);
         t_max = t1.min(t_max);
@@ -428,9 +426,7 @@ impl AABB {
         let mut t1 =
             ((self._min.y - ray.ori.y) / ray.dir.y).max((self._max.y - ray.ori.y) / ray.dir.y);
         if inv < 0.0 {
-            let tmp = t0;
-            t0 = t1;
-            t1 = tmp;
+            std::mem::swap(&mut t0, &mut t1);
         }
         t_min = t0.max(t_min);
         t_max = t1.min(t_max);
@@ -444,9 +440,7 @@ impl AABB {
         let mut t1 =
             ((self._min.z - ray.ori.z) / ray.dir.z).max((self._max.z - ray.ori.z) / ray.dir.z);
         if inv < 0.0 {
-            let tmp = t0;
-            t0 = t1;
-            t1 = tmp;
+            std::mem::swap(&mut t0, &mut t1);
         }
         t_min = t0.max(t_min);
         t_max = t1.min(t_max);

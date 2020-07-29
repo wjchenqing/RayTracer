@@ -12,10 +12,6 @@ impl Vec3 {
         Self { x, y, z }
     }
 
-    pub fn copy(&self) -> Vec3 {
-        Vec3::new(self.x, self.y, self.z)
-    }
-
     pub fn ones() -> Self {
         Self::new(1.0 as f64, 1.0 as f64, 1.0 as f64)
     }
