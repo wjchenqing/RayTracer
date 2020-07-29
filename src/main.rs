@@ -4,6 +4,8 @@ mod vec3;
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 pub use rand::random;
+pub use rand::Rng;
+pub use std::cmp::Ordering;
 pub use std::f64::consts::PI;
 pub use std::f64::INFINITY;
 pub use std::sync::Arc;
@@ -167,6 +169,7 @@ pub struct HitRecord {
 }
 pub trait Hittable: Sync + Send {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
+    fn bounding_box(&self, t0: f64, t1: f64) -> Option<AABB>;
 }
 pub struct HittableList {
     pub objects: Vec<Box<dyn Hittable>>,
@@ -188,6 +191,40 @@ impl Hittable for HittableList {
             }
         }
         hit_anything
+    }
+    fn bounding_box(&self, t0: f64, t1: f64) -> Option<AABB> {
+        if self.objects.is_empty() {
+            return None;
+        }
+        let mut output_box;
+        if let Some(tmp_box) = self.objects[0].bounding_box(t0, t1) {
+            output_box = tmp_box;
+        } else {
+            return None;
+        }
+
+        for i in 1..self.objects.len() {
+            if let Some(tmp_box) = self.objects[i].bounding_box(t0, t1) {
+                output_box = surrounding_box(output_box, tmp_box);
+            } else {
+                return None;
+            }
+        }
+        Some(output_box)
+    }
+}
+fn surrounding_box(box0: AABB, box1: AABB) -> AABB {
+    AABB {
+        _min: Vec3 {
+            x: box0._min.x.min(box1._min.x),
+            y: box0._min.y.min(box1._min.y),
+            z: box0._min.z.min(box1._min.z),
+        },
+        _max: Vec3 {
+            x: box0._max.x.max(box1._max.x),
+            y: box0._max.y.max(box1._max.y),
+            z: box0._max.z.max(box1._max.z),
+        },
     }
 }
 
@@ -253,6 +290,165 @@ impl Hittable for Sphere {
             }
         }
         None
+    }
+    fn bounding_box(&self, _t0: f64, _t1: f64) -> Option<AABB> {
+        Some(AABB::new(
+            &(self.center - Vec3::new(self.radius, self.radius, self.radius)),
+            &(self.center + Vec3::new(self.radius, self.radius, self.radius)),
+        ))
+    }
+}
+
+pub struct BvhNode {
+    pub left: Arc<dyn Hittable>,
+    pub right: Arc<dyn Hittable>,
+    pub _box: AABB,
+}
+impl Hittable for BvhNode {
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        if self._box.hit(r, &t_min, &t_max) == None {
+            return None;
+        }
+        if let Some(tmp1) = self.left.hit(r, t_min, t_max) {
+            if let Some(tmp2) = self.right.hit(r, t_min, t_max) {
+                return Some(tmp2);
+            } else {
+                return Some(tmp1);
+            }
+        } else if let Some(tmp2) = self.right.hit(r, t_min, t_max) {
+            return Some(tmp2);
+        }
+        None
+    }
+    fn bounding_box(&self, _t0: f64, _t1: f64) -> Option<AABB> {
+        Some(self._box)
+    }
+}
+impl BvhNode {
+    fn box_x_compare(a: &Arc<dyn Hittable>, b: &Arc<dyn Hittable>) -> Ordering {
+        if let Some(box_a) = a.bounding_box(0.0, 0.0) {
+            if let Some(box_b) = b.bounding_box(0.0, 0.0) {
+                if let Some(tmp) = box_a._min.x.partial_cmp(&box_b._min.x) {
+                    return tmp;
+                }
+            }
+        }
+        panic!();
+    }
+    fn box_y_compare(a: &Arc<dyn Hittable>, b: &Arc<dyn Hittable>) -> Ordering {
+        if let Some(box_a) = a.bounding_box(0.0, 0.0) {
+            if let Some(box_b) = b.bounding_box(0.0, 0.0) {
+                if let Some(tmp) = box_a._min.y.partial_cmp(&box_b._min.y) {
+                    return tmp;
+                }
+            }
+        }
+        panic!();
+    }
+    fn box_z_compare(a: &Arc<dyn Hittable>, b: &Arc<dyn Hittable>) -> Ordering {
+        if let Some(box_a) = a.bounding_box(0.0, 0.0) {
+            if let Some(box_b) = b.bounding_box(0.0, 0.0) {
+                if let Some(tmp) = box_a._min.z.partial_cmp(&box_b._min.z) {
+                    return tmp;
+                }
+            }
+        }
+        panic!();
+    }
+    pub fn new(
+        objects: &mut Vec<Arc<dyn Hittable>>,
+        start: usize,
+        end: usize,
+        time0: f64,
+        time1: f64,
+    ) -> Self {
+        let left;
+        let right;
+        let _box;
+        let axis = rand::thread_rng().gen_range(0, 2);
+        match axis {
+            0 => objects[start..end].sort_by(|a, b| Self::box_x_compare(a, b)),
+            1 => objects[start..end].sort_by(|a, b| Self::box_y_compare(a, b)),
+            _ => objects[start..end].sort_by(|a, b| Self::box_z_compare(a, b)),
+        };
+        let len = end - start;
+        if len == 1 {
+            left = objects[start].clone();
+            right = objects[start].clone();
+        } else if len == 2 {
+            left = objects[start].clone();
+            right = objects[end].clone();
+        } else {
+            let mid = start + len / 2;
+            left = Arc::new(BvhNode::new(objects, start, mid, time0, time1));
+            right = Arc::new(BvhNode::new(objects, mid, end, time0, time1));
+        }
+        if let Some(box_left) = left.bounding_box(time0, time1) {
+            if let Some(box_right) = left.bounding_box(time0, time1) {
+                _box = surrounding_box(box_left, box_right);
+                return Self { left, right, _box };
+            }
+        }
+        panic!();
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct AABB {
+    pub _min: Vec3,
+    pub _max: Vec3,
+}
+impl AABB {
+    pub fn new(a: &Vec3, b: &Vec3) -> Self {
+        Self { _min: *a, _max: *b }
+    }
+    pub fn hit(&self, r: &Ray, tmin: &f64, tmax: &f64) -> Option<(f64, f64)> {
+        let mut t_min = *tmin;
+        let mut t_max = *tmax;
+
+        let inv = 1.0 / r.dir.x;
+        let mut t0 = ((self._min.x - r.ori.x) / r.dir.x).min((self._max.x - r.ori.x) / r.dir.x);
+        let mut t1 = ((self._min.x - r.ori.x) / r.dir.x).max((self._max.x - r.ori.x) / r.dir.x);
+        if inv < 0.0 {
+            let tmp = t0;
+            t0 = t1;
+            t1 = tmp;
+        }
+        t_min = t0.max(t_min);
+        t_max = t1.min(t_max);
+        if t_max <= t_min {
+            return None;
+        }
+
+        let inv = 1.0 / r.dir.y;
+        let mut t0 = ((self._min.y - r.ori.y) / r.dir.y).min((self._max.y - r.ori.y) / r.dir.y);
+        let mut t1 = ((self._min.y - r.ori.y) / r.dir.y).max((self._max.y - r.ori.y) / r.dir.y);
+        if inv < 0.0 {
+            let tmp = t0;
+            t0 = t1;
+            t1 = tmp;
+        }
+        t_min = t0.max(t_min);
+        t_max = t1.min(t_max);
+        if t_max <= t_min {
+            return None;
+        }
+
+        let inv = 1.0 / r.dir.z;
+        let mut t0 = ((self._min.z - r.ori.z) / r.dir.z).min((self._max.z - r.ori.z) / r.dir.z);
+        let mut t1 = ((self._min.z - r.ori.z) / r.dir.z).max((self._max.z - r.ori.z) / r.dir.z);
+        if inv < 0.0 {
+            let tmp = t0;
+            t0 = t1;
+            t1 = tmp;
+        }
+        t_min = t0.max(t_min);
+        t_max = t1.min(t_max);
+        if t_max <= t_min {
+            return None;
+        }
+
+        Some((t_min, t_max))
     }
 }
 
@@ -385,9 +581,6 @@ fn ray_color(r: &Ray, world: &dyn Hittable, depth: i32) -> Vec3 {
     }
     let tmp = world.hit(r, 0.001, f64::MAX);
     if let Some(rec) = tmp {
-        // let dir = rec.nor + random_vec(&rec.nor);
-        // return (rec.nor + Vec3::new(1.0, 1.0, 1.0)) * 0.5 * 255.0;
-        // return ray_color(&Ray::new(rec.pos, dir), world, depth - 1) * 0.5;
         let tmp = rec.mat_ptr.scatter(r, &rec);
         if let Some((attenuation, scattered)) = tmp {
             return vec3::Vec3::elemul(attenuation, ray_color(&scattered, world, depth - 1));
@@ -474,50 +667,6 @@ fn sphere() {
     let bar = ProgressBar::new(i_h as u64);
 
     let world = random_scene();
-
-    // let r = (PI / 4.0).cos();
-    // let material_left = Arc::new(Lambertian::new(Vec3::new(0.0, 0.0, 1.0)));
-    // let material_right = Arc::new(Lambertian::new(Vec3::new(1.0, 0.0, 0.0)));
-    // world.add(Box::new(Sphere {
-    //     center: Vec3::new(-r, 0.0, -1.0),
-    //     radius: r,
-    //     mat_ptr: material_left,
-    // }));
-    // world.add(Box::new(Sphere {
-    //     center: Vec3::new(r, 0.0, -1.0),
-    //     radius: r,
-    //     mat_ptr: material_right,
-    // }));
-
-    // let material_center = Arc::new(Lambertian::new(Vec3::new(0.1, 0.2, 0.5)));
-    // let material_ground = Arc::new(Lambertian::new(Vec3::new(0.8, 0.8, 0.0)));
-    // let material_left = Arc::new(Dielectric::new(1.5));
-    // let material_right = Arc::new(Metal::new(Vec3::new(0.8, 0.6, 0.2), 0.0));
-    // world.add(Box::new(Sphere {
-    //     center: Vec3::new(0.0, 0.0, -1.0),
-    //     radius: 0.5,
-    //     mat_ptr: material_center,
-    // }));
-    // world.add(Box::new(Sphere {
-    //     center: Vec3::new(0.0, -100.5, -1.0),
-    //     radius: 100.0,
-    //     mat_ptr: material_ground,
-    // }));
-    // world.add(Box::new(Sphere {
-    //     center: Vec3::new(-1.0, 0.0, -1.0),
-    //     radius: 0.5,
-    //     mat_ptr: material_left.clone(),
-    // }));
-    // world.add(Box::new(Sphere {
-    //     center: Vec3::new(-1.0, 0.0, -1.0),
-    //     radius: -0.45,
-    //     mat_ptr: material_left.clone(),
-    // }));
-    // world.add(Box::new(Sphere {
-    //     center: Vec3::new(1.0, 0.0, -1.0),
-    //     radius: 0.5,
-    //     mat_ptr: material_right,
-    // }));
 
     let lookfrom = Vec3::new(13.0, 2.0, 3.0);
     let lookat = Vec3::new(0.0, 0.0, 0.0);
