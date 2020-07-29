@@ -59,6 +59,7 @@ fn random_in_unit_disk() -> Vec3 {
 
 pub trait Material: Sync + Send {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)>;
+    fn emitted(&self, u: f64, v: f64, p: &Vec3) -> Vec3;
 }
 pub struct Lambertian {
     pub albedo: Arc<dyn Texture>,
@@ -68,6 +69,13 @@ impl Material for Lambertian {
         let scatter_direction = rec.nor + random_vec(&rec.nor);
         let scattered = Ray::new(rec.pos, scatter_direction);
         Some((self.albedo.value(rec.u, rec.v, &rec.pos), scattered))
+    }
+    fn emitted(&self, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
+        Vec3 {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
     }
 }
 impl Lambertian {
@@ -132,6 +140,13 @@ impl Material for Dielectric {
             }
         }
     }
+    fn emitted(&self, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
+        Vec3 {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
+    }
 }
 
 pub struct Metal {
@@ -154,6 +169,35 @@ impl Material for Metal {
             return Some((self.albedo, scattered));
         }
         None
+    }
+    fn emitted(&self, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
+        Vec3 {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
+    }
+}
+
+pub struct DiffuseLight {
+    pub emit: Arc<dyn Texture>,
+}
+impl DiffuseLight {
+    pub fn new(a: Arc<dyn Texture>) -> Self {
+        Self { emit: a.clone() }
+    }
+    pub fn new_from_color(c: &Vec3) -> Self {
+        Self {
+            emit: Arc::new(SolidColor::new(*c)),
+        }
+    }
+}
+impl Material for DiffuseLight {
+    fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<(Vec3, Ray)> {
+        None
+    }
+    fn emitted(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
+        self.emit.value(u, v, p)
     }
 }
 
@@ -525,15 +569,15 @@ fn random_scene() -> HittableList {
                 b as f64 + 0.9 * random::<f64>().abs(),
             );
             if ((center - Vec3::new(4.0, 0.2, 0.0)) as Vec3).length() > 0.9 {
-                if choose_mat < 0.8 {
-                    let albedo = vec3::Vec3::elemul(random_positive_unit(), random_positive_unit());
-                    let sphere_material = Arc::new(Lambertian::new(albedo));
+                if choose_mat < 0.7 {
+                    let albedo = random_positive_unit();
+                    let sphere_material = Arc::new(DiffuseLight::new_from_color(&albedo));
                     world.add(Box::new(Sphere {
                         center,
                         radius: 0.2,
                         mat_ptr: sphere_material,
                     }))
-                } else if choose_mat < 0.95 {
+                } else if choose_mat < 0.85 {
                     let albedo = random_positive_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5);
                     let fuzz = random::<f64>().abs() / 2.0;
                     let sphere_material = Arc::new(Metal::new(albedo, fuzz));
@@ -546,36 +590,52 @@ fn random_scene() -> HittableList {
                     let sphere_material = Arc::new(Dielectric::new(1.5));
                     world.add(Box::new(Sphere {
                         center,
-                        radius: 0.2,
+                        radius: 0.3,
                         mat_ptr: sphere_material,
                     }))
                 }
             }
         }
     }
-    let material1 = Arc::new(Lambertian::new(Vec3::new(0.4, 0.2, 0.1)));
+    // let material1 = Arc::new(DiffuseLight::new_from_color(&Vec3::new(0.7, 0.6, 0.5)));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(0.0, 0.8, 0.0),
+    //     radius: 0.79,
+    //     mat_ptr: material1,
+    // }));
+    let checker1 = Arc::new(CheckerTexture::new_from_color(
+        &Vec3::new(0.6, 0.6, 0.0),
+        &Vec3::new(0.9, 0.9, 0.9),
+    ));
     world.add(Box::new(Sphere {
-        center: Vec3::new(-4.0, 1.0, 0.0),
-        radius: 1.0,
-        mat_ptr: material1,
+        center: Vec3::new(0.0, 0.8, 0.0),
+        radius: 0.7,
+        mat_ptr: Arc::new(DiffuseLight::new(checker1)),
     }));
     let material2 = Arc::new(Dielectric::new(1.5));
     world.add(Box::new(Sphere {
-        center: Vec3::new(0.0, 1.0, 0.0),
-        radius: 1.0,
+        center: Vec3::new(0.0, 0.8, 0.0),
+        radius: 0.8,
         mat_ptr: material2,
     }));
-    let material3 = Arc::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.0));
+    let material = Arc::new(Dielectric::new(1.5));
     world.add(Box::new(Sphere {
-        center: Vec3::new(4.0, 1.0, 0.0),
-        radius: 1.0,
-        mat_ptr: material3,
+        center: Vec3::new(0.0, 0.8, 0.0),
+        radius: -0.75,
+        mat_ptr: material,
     }));
+    
+    // let material3 = Arc::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.0));
+    // world.add(Box::new(Sphere {
+    //     center: Vec3::new(0.0, 0.8, 0.0),
+    //     radius: 0.79,
+    //     mat_ptr: material3,
+    // }));
 
     world
 }
 
-fn ray_color(ray: &Ray, world: &dyn Hittable, depth: i32) -> Vec3 {
+fn ray_color(ray: &Ray, background: &Vec3, world: &dyn Hittable, depth: i32) -> Vec3 {
     if depth <= 0 {
         return Vec3::new(0.0, 0.0, 0.0);
     }
@@ -583,13 +643,18 @@ fn ray_color(ray: &Ray, world: &dyn Hittable, depth: i32) -> Vec3 {
     if let Some(rec) = tmp {
         let tmp = rec.mat_ptr.scatter(ray, &rec);
         if let Some((attenuation, scattered)) = tmp {
-            return vec3::Vec3::elemul(attenuation, ray_color(&scattered, world, depth - 1));
+            return rec.mat_ptr.emitted(rec.u, rec.v, &rec.pos)
+                + vec3::Vec3::elemul(
+                    attenuation,
+                    ray_color(&scattered, background, world, depth - 1),
+                );
         }
-        return Vec3::new(0.0, 0.0, 0.0);
+        return rec.mat_ptr.emitted(rec.u, rec.v, &rec.pos);
     }
-    let unit_dir = (ray.dir).unit();
-    let t = 0.5 * (unit_dir.y + 1.0);
-    Vec3::new(255.0 - 127.5 * t, 255.0 - 76.5 * t, 255.0) / 255.0
+    // let unit_dir = (ray.dir).unit();
+    // let t = 0.5 * (unit_dir.y + 1.0);
+    // Vec3::new(255.0 - 127.5 * t, 255.0 - 76.5 * t, 255.0) / 255.0
+    *background
 }
 
 pub struct Camera {
@@ -668,11 +733,12 @@ fn sphere() {
 
     let world = random_scene();
 
-    let lookfrom = Vec3::new(13.0, 2.0, 3.0);
+    let lookfrom = Vec3::new(13.0, 1.5, 13.0);
     let lookat = Vec3::new(0.0, 0.0, 0.0);
     let vup = Vec3::new(0.0, 1.0, 0.0);
-    let dist_to_focus = 10.0;
-    let aperture = 0.5;
+    let dist_to_focus = 20.0;
+    let aperture = 1.0;
+    let background = Vec3::new(0.0, 0.0, 0.0);
     let camera = Camera::new(
         &lookfrom,
         &lookat,
@@ -690,7 +756,7 @@ fn sphere() {
                 let u = (i as f64 + random_num()) / ((i_w - 1) as f64);
                 let v = ((i_h - j) as f64 - random_num()) / ((i_h - 1) as f64);
                 let r = camera.get_ray(u, v);
-                color += ray_color(&r, &world, max_depth);
+                color += ray_color(&r, &background, &world, max_depth);
             }
             color = color / (samples_per_pixel as f64);
             let pixel = img.get_pixel_mut(i, j);
