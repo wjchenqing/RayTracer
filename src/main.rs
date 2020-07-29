@@ -194,7 +194,7 @@ impl Hittable for Sphere {
             if (tmp < t_max) && (tmp > t_min) {
                 let pos = r.at(tmp);
                 let mut nor = (pos - self.center) / self.radius;
-                let flag = (r.dir * nor.clone()) < 0.0;
+                let flag = (r.dir * nor) < 0.0;
                 if !flag {
                     nor = -nor;
                 }
@@ -242,14 +242,18 @@ fn random_scene() -> HittableList {
         for b in -11..11 {
             let choose_mat = random::<f64>();
             let center = Vec3::new(
-                a as f64 + 0.9 * random::<f64>(),
+                a as f64 + 0.9 * random::<f64>().abs(),
                 0.2,
-                b as f64 + 0.9 * random::<f64>(),
+                b as f64 + 0.9 * random::<f64>().abs(),
             );
             if ((center - Vec3::new(4.0, 0.2, 0.0)) as Vec3).length() > 0.9 {
                 if choose_mat < 0.8 {
                     let albedo = vec3::Vec3::elemul(random_unit(), random_unit());
-                    let sphere_material = Arc::new(Lambertian::new(albedo));
+                    let sphere_material = Arc::new(Lambertian::new(Vec3::new(
+                        albedo.x.abs(),
+                        albedo.y.abs(),
+                        albedo.z.abs(),
+                    )));
                     world.add(Box::new(Sphere {
                         center,
                         radius: 0.2,

@@ -25,7 +25,7 @@ impl Vec3 {
     }
 
     pub fn squared_length(&self) -> f64 {
-        self.x * self.x + self.y * self.y + self.z * self.z
+        (self.x * self.x + self.y * self.y + self.z * self.z) as f64
     }
 
     pub fn elemul(a: Self, b: Self) -> Self {
@@ -41,7 +41,7 @@ impl Vec3 {
     }
 
     pub fn length(&self) -> f64 {
-        ((self.x * self.x + self.y * self.y + self.z * self.z) as f64).sqrt()
+        ((self.x * self.x + self.y * self.y + self.z * self.z) as f64).sqrt() as f64
     }
 
     pub fn unit(&self) -> Self {
@@ -145,7 +145,7 @@ impl Mul for Vec3 {
     type Output = f64;
 
     fn mul(self, other: Self) -> f64 {
-        self.x * other.x + self.y * other.y + self.z * other.z
+        (self.x * other.x + self.y * other.y + self.z * other.z) as f64
     }
 }
 
