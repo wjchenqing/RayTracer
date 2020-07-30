@@ -732,7 +732,7 @@ impl Camera {
 fn sphere() {
     let i_h = 1080;
     let i_w = 1920;
-    let samples_per_pixel = 300;
+    let samples_per_pixel = 500;
     let max_depth = 50;
     let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
     let bar = ProgressBar::new(i_h as u64);
