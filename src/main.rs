@@ -565,11 +565,11 @@ fn random_scene() -> HittableList {
             let choose_mat = random::<f64>();
             let center = Vec3::new(
                 a as f64 + 0.9 * random::<f64>().abs(),
-                random::<f64>().abs() / 3.0 + 0.05,
+                random::<f64>().abs() / 3.0 + 0.08,
                 b as f64 + 0.9 * random::<f64>().abs(),
             );
-            if ((center - Vec3::new(0.0, 2.0, 0.0)) as Vec3).length() > 2.5 {
-                if choose_mat < 0.6 {
+            if ((center - Vec3::new(0.0, 2.0, 0.0)) as Vec3).length() > 2.3 {
+                if choose_mat < 0.7 {
                     let albedo = random_positive_unit() * 0.6 + Vec3::new(0.4, 0.25, 0.35);
                     let sphere_material = Arc::new(DiffuseLight::new_from_color(&albedo));
                     world.add(Box::new(Sphere {
@@ -583,13 +583,13 @@ fn random_scene() -> HittableList {
                     //     radius: center.y * 0.99,
                     //     mat_ptr: sphere_material,
                     // }));
-                    let sphere_material = Arc::new(Dielectric::new(4.5));
+                    let sphere_material = Arc::new(Dielectric::new(4.0));
                     world.add(Box::new(Sphere {
                         center,
                         radius: center.y,
                         mat_ptr: sphere_material,
                     }));
-                } else if choose_mat < 0.8 {
+                } else if choose_mat < 0.9 {
                     let albedo = random_positive_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5);
                     let fuzz = random::<f64>().abs() / 2.0;
                     let sphere_material = Arc::new(Metal::new(albedo, fuzz));
@@ -739,7 +739,7 @@ fn sphere() {
     let i_h = 1080;
     let i_w = 1920;
     let samples_per_pixel = 500;
-    let max_depth = 70;
+    let max_depth = 90;
     let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
     let bar = ProgressBar::new(i_h as u64);
 
