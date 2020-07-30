@@ -624,25 +624,25 @@ fn random_scene() -> HittableList {
         radius: 1.4,
         mat_ptr: Arc::new(DiffuseLight::new(checker1)),
     }));
-    let material2 = Arc::new(Dielectric::new(1.5));
+    let material2 = Arc::new(Dielectric::new(2.0));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, 2.0, 0.0),
         radius: 2.0,
         mat_ptr: material2,
     }));
-    let material = Arc::new(Dielectric::new(1.5));
+    let material = Arc::new(Dielectric::new(2.0));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, 1.9, 0.0),
         radius: -1.8,
         mat_ptr: material,
     }));
 
-    // let material3 = Arc::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.0));
-    // world.add(Box::new(Sphere {
-    //     center: Vec3::new(0.0, 0.8, 0.0),
-    //     radius: 0.79,
-    //     mat_ptr: material3,
-    // }));
+    let material3 = Arc::new(Metal::new(Vec3::new(1.0, 0.9, 1.0), 0.0));
+    world.add(Box::new(Sphere {
+        center: Vec3::new(0.0, 1.5, 0.0),
+        radius: 1.4,
+        mat_ptr: material3,
+    }));
 
     world
 }
@@ -738,7 +738,7 @@ impl Camera {
 fn sphere() {
     let i_h = 1080;
     let i_w = 1920;
-    let samples_per_pixel = 500;
+    let samples_per_pixel = 2;
     let max_depth = 50;
     let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
     let bar = ProgressBar::new(i_h as u64);
