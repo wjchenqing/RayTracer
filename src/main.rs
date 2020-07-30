@@ -532,7 +532,7 @@ impl CheckerTexture {
 }
 impl Texture for CheckerTexture {
     fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
-        let sines = (4.0 * p.x).sin() * (4.0 * p.y).sin() * (4.0 * p.z).sin();
+        let sines = (3.90 * p.x).sin() * (3.90 * (p.y + 0.11)).sin() * (3.90 * p.z).sin();
         if sines < 0.0 {
             self.odd.value(u, v, p)
         } else {
