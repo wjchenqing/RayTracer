@@ -746,7 +746,7 @@ fn sphere() {
     let world = random_scene();
 
     let lookfrom = Vec3::new(20.0, 4.0, 10.0);
-    let lookat = Vec3::new(-10.5, -1.9, 0.0);
+    let lookat = Vec3::new(-11.0, -0.8, -1.0);
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 20.0;
     let aperture = 1.0;
