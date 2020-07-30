@@ -565,11 +565,11 @@ fn random_scene() -> HittableList {
             let choose_mat = random::<f64>();
             let center = Vec3::new(
                 a as f64 + 0.9 * random::<f64>().abs(),
-                random::<f64>().abs() / 5.0 + 0.1,
+                random::<f64>().abs() / 3.0 + 0.1,
                 b as f64 + 0.9 * random::<f64>().abs(),
             );
-            if ((center - Vec3::new(4.0, 0.2, 0.0)) as Vec3).length() > 0.9 {
-                if choose_mat < 0.7 {
+            if ((center - Vec3::new(0.0, 0.2, 0.0)) as Vec3).length() > 0.9 {
+                if choose_mat < 0.5 {
                     let albedo = random_positive_unit() * 0.6 + Vec3::new(0.4, 0.25, 0.35);
                     let sphere_material = Arc::new(DiffuseLight::new_from_color(&albedo));
                     world.add(Box::new(Sphere {
