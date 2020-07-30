@@ -532,7 +532,7 @@ impl CheckerTexture {
 }
 impl Texture for CheckerTexture {
     fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
-        let sines = (10.0 * p.x).sin() * (10.0 * p.y).sin() * (10.0 * p.z).sin();
+        let sines = (4.0 * p.x).sin() * (4.0 * p.y).sin() * (4.0 * p.z).sin();
         if sines < 0.0 {
             self.odd.value(u, v, p)
         } else {
@@ -560,21 +560,21 @@ fn random_scene() -> HittableList {
         mat_ptr: Arc::new(Lambertian::new_from_arc(checker)),
     }));
 
-    for a in -11..11 {
-        for b in -11..11 {
+    for a in -21..21 {
+        for b in -21..21 {
             let choose_mat = random::<f64>();
             let center = Vec3::new(
                 a as f64 + 0.9 * random::<f64>().abs(),
-                0.2,
+                random::<f64>().abs() / 5.0 + 0.1,
                 b as f64 + 0.9 * random::<f64>().abs(),
             );
             if ((center - Vec3::new(4.0, 0.2, 0.0)) as Vec3).length() > 0.9 {
                 if choose_mat < 0.7 {
-                    let albedo = random_positive_unit();
+                    let albedo = random_positive_unit() * 0.6 + Vec3::new(0.4, 0.25, 0.35);
                     let sphere_material = Arc::new(DiffuseLight::new_from_color(&albedo));
                     world.add(Box::new(Sphere {
                         center,
-                        radius: 0.2,
+                        radius: center.y,
                         mat_ptr: sphere_material,
                     }))
                 } else if choose_mat < 0.85 {
@@ -583,14 +583,14 @@ fn random_scene() -> HittableList {
                     let sphere_material = Arc::new(Metal::new(albedo, fuzz));
                     world.add(Box::new(Sphere {
                         center,
-                        radius: 0.2,
+                        radius: center.y,
                         mat_ptr: sphere_material,
                     }))
                 } else {
                     let sphere_material = Arc::new(Dielectric::new(1.5));
                     world.add(Box::new(Sphere {
                         center,
-                        radius: 0.3,
+                        radius: center.y,
                         mat_ptr: sphere_material,
                     }))
                 }
@@ -604,27 +604,27 @@ fn random_scene() -> HittableList {
     //     mat_ptr: material1,
     // }));
     let checker1 = Arc::new(CheckerTexture::new_from_color(
-        &Vec3::new(0.6, 0.6, 0.0),
-        &Vec3::new(0.9, 0.9, 0.9),
+        &Vec3::new(1.0, 0.45, 1.0),
+        &Vec3::new(1.0, 0.9, 1.0),
     ));
     world.add(Box::new(Sphere {
-        center: Vec3::new(0.0, 0.8, 0.0),
-        radius: 0.7,
+        center: Vec3::new(0.0, 1.5, 0.0),
+        radius: 1.4,
         mat_ptr: Arc::new(DiffuseLight::new(checker1)),
     }));
     let material2 = Arc::new(Dielectric::new(1.5));
     world.add(Box::new(Sphere {
-        center: Vec3::new(0.0, 0.8, 0.0),
-        radius: 0.8,
+        center: Vec3::new(0.0, 2.0, 0.0),
+        radius: 2.0,
         mat_ptr: material2,
     }));
     let material = Arc::new(Dielectric::new(1.5));
     world.add(Box::new(Sphere {
-        center: Vec3::new(0.0, 0.8, 0.0),
-        radius: -0.75,
+        center: Vec3::new(0.0, 1.9, 0.0),
+        radius: -1.8,
         mat_ptr: material,
     }));
-    
+
     // let material3 = Arc::new(Metal::new(Vec3::new(0.7, 0.6, 0.5), 0.0));
     // world.add(Box::new(Sphere {
     //     center: Vec3::new(0.0, 0.8, 0.0),
@@ -724,16 +724,16 @@ impl Camera {
     }
 }
 fn sphere() {
-    let i_h = 800;
-    let i_w = 1200;
+    let i_h = 1080;
+    let i_w = 1920;
     let samples_per_pixel = 500;
-    let max_depth = 50;
+    let max_depth = 80;
     let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
     let bar = ProgressBar::new(i_h as u64);
 
     let world = random_scene();
 
-    let lookfrom = Vec3::new(13.0, 1.5, 13.0);
+    let lookfrom = Vec3::new(16.0, 2.5, 10.0);
     let lookat = Vec3::new(0.0, 0.0, 0.0);
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 20.0;
@@ -743,8 +743,8 @@ fn sphere() {
         &lookfrom,
         &lookat,
         &vup,
-        20.0,
-        3.0 / 2.0,
+        30.0,
+        i_w as f64 / i_h as f64,
         aperture,
         dist_to_focus,
     );
