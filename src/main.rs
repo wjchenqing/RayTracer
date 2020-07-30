@@ -560,15 +560,15 @@ fn random_scene() -> HittableList {
         mat_ptr: Arc::new(Lambertian::new_from_arc(checker)),
     }));
 
-    for a in -21..21 {
-        for b in -21..21 {
+    for a in -21..31 {
+        for b in -21..31 {
             let choose_mat = random::<f64>();
             let center = Vec3::new(
                 a as f64 + 0.9 * random::<f64>().abs(),
                 random::<f64>().abs() / 3.0 + 0.1,
                 b as f64 + 0.9 * random::<f64>().abs(),
             );
-            if ((center - Vec3::new(0.0, 0.2, 0.0)) as Vec3).length() > 0.9 {
+            if ((center - Vec3::new(0.0, 2.0, 0.0)) as Vec3).length() > 2.2 {
                 if choose_mat < 0.5 {
                     let albedo = random_positive_unit() * 0.6 + Vec3::new(0.4, 0.25, 0.35);
                     let sphere_material = Arc::new(DiffuseLight::new_from_color(&albedo));
@@ -576,8 +576,14 @@ fn random_scene() -> HittableList {
                         center,
                         radius: center.y,
                         mat_ptr: sphere_material,
-                    }))
-                } else if choose_mat < 0.85 {
+                    }));
+                    let sphere_material = Arc::new(Dielectric::new(5.5));
+                    world.add(Box::new(Sphere {
+                        center,
+                        radius: center.y,
+                        mat_ptr: sphere_material,
+                    }));
+                } else if choose_mat < 0.75 {
                     let albedo = random_positive_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5);
                     let fuzz = random::<f64>().abs() / 2.0;
                     let sphere_material = Arc::new(Metal::new(albedo, fuzz));
@@ -585,14 +591,14 @@ fn random_scene() -> HittableList {
                         center,
                         radius: center.y,
                         mat_ptr: sphere_material,
-                    }))
+                    }));
                 } else {
                     let sphere_material = Arc::new(Dielectric::new(1.5));
                     world.add(Box::new(Sphere {
                         center,
                         radius: center.y,
                         mat_ptr: sphere_material,
-                    }))
+                    }));
                 }
             }
         }
