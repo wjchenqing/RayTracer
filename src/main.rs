@@ -560,8 +560,8 @@ fn random_scene() -> HittableList {
         mat_ptr: Arc::new(Lambertian::new_from_arc(checker)),
     }));
 
-    for a in -21..31 {
-        for b in -21..31 {
+    for a in -15..21 {
+        for b in -11..11 {
             let choose_mat = random::<f64>();
             let center = Vec3::new(
                 a as f64 + 0.9 * random::<f64>().abs(),
@@ -577,12 +577,12 @@ fn random_scene() -> HittableList {
                         radius: center.y,
                         mat_ptr: sphere_material,
                     }));
-                    // let sphere_material = Arc::new(Dielectric::new(5.5));
-                    // world.add(Box::new(Sphere {
-                    //     center,
-                    //     radius: center.y,
-                    //     mat_ptr: sphere_material,
-                    // }));
+                // let sphere_material = Arc::new(Dielectric::new(5.5));
+                // world.add(Box::new(Sphere {
+                //     center,
+                //     radius: center.y,
+                //     mat_ptr: sphere_material,
+                // }));
                 } else if choose_mat < 0.75 {
                     let albedo = random_positive_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5);
                     let fuzz = random::<f64>().abs() / 2.0;
