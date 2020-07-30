@@ -577,12 +577,12 @@ fn random_scene() -> HittableList {
                         radius: center.y,
                         mat_ptr: sphere_material,
                     }));
-                    let sphere_material = Arc::new(Dielectric::new(5.5));
-                    world.add(Box::new(Sphere {
-                        center,
-                        radius: center.y,
-                        mat_ptr: sphere_material,
-                    }));
+                    // let sphere_material = Arc::new(Dielectric::new(5.5));
+                    // world.add(Box::new(Sphere {
+                    //     center,
+                    //     radius: center.y,
+                    //     mat_ptr: sphere_material,
+                    // }));
                 } else if choose_mat < 0.75 {
                     let albedo = random_positive_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5);
                     let fuzz = random::<f64>().abs() / 2.0;
@@ -732,7 +732,7 @@ impl Camera {
 fn sphere() {
     let i_h = 1080;
     let i_w = 1920;
-    let samples_per_pixel = 200;
+    let samples_per_pixel = 300;
     let max_depth = 50;
     let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
     let bar = ProgressBar::new(i_h as u64);
