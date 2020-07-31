@@ -555,8 +555,8 @@ fn random_scene() -> HittableList {
         &Vec3::new(0.9, 0.9, 0.9),
     ));
     world.add(Box::new(Sphere {
-        center: Vec3::new(0.0, -1000.0, -1.0),
-        radius: 1000.0,
+        center: Vec3::new(0.0, -2000.0, -1.0),
+        radius: 2000.0,
         mat_ptr: Arc::new(Lambertian::new_from_arc(checker)),
     }));
 
@@ -569,8 +569,8 @@ fn random_scene() -> HittableList {
                 b as f64 + 0.7 * random::<f64>().abs(),
             );
             if ((center - Vec3::new(0.0, 2.0, 0.0)) as Vec3).length() - center.y > 2.2 {
-                if choose_mat < 0.65 {
-                    let albedo = random_positive_unit() * 0.6 + Vec3::new(0.4, 0.25, 0.35);
+                if choose_mat < 0.7 {
+                    let albedo = random_positive_unit() * 0.6 + Vec3::new(0.35, 0.35, 0.2);
                     let sphere_material = Arc::new(DiffuseLight::new_from_color(&albedo));
                     world.add(Box::new(Sphere {
                         center,
@@ -583,15 +583,15 @@ fn random_scene() -> HittableList {
                     //     radius: center.y * 1.001 * 0.99999999,
                     //     mat_ptr: sphere_material,
                     // }));
-                    let sphere_material = Arc::new(Dielectric::new(3.0));
+                    let sphere_material = Arc::new(Dielectric::new(4.0));
                     world.add(Box::new(Sphere {
                         center,
                         radius: center.y,
                         mat_ptr: sphere_material,
                     }));
-                } else if choose_mat < 0.85 {
+                } else if choose_mat < 0.9 {
                     let albedo = random_positive_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5);
-                    let fuzz = random::<f64>().abs() / 2.0;
+                    let fuzz = random::<f64>().abs() / 3.0;
                     let sphere_material = Arc::new(Metal::new(albedo, fuzz));
                     world.add(Box::new(Sphere {
                         center,
@@ -616,28 +616,28 @@ fn random_scene() -> HittableList {
     //     mat_ptr: material1,
     // }));
     let checker1 = Arc::new(CheckerTexture::new_from_color(
-        &Vec3::new(1.0, 0.45, 1.0),
-        &Vec3::new(1.0, 0.7, 1.0),
+        &Vec3::new(1.0, 0.53, 0.07),
+        &Vec3::new(1.0, 0.81, 0.64),
     ));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, 1.5, 0.0),
         radius: 1.4,
         mat_ptr: Arc::new(DiffuseLight::new(checker1)),
     }));
-    let material2 = Arc::new(Dielectric::new(2.0));
+    let material2 = Arc::new(Dielectric::new(2.5));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, 2.0, 0.0),
         radius: 2.0,
         mat_ptr: material2,
     }));
-    let material = Arc::new(Dielectric::new(2.0));
+    let material = Arc::new(Dielectric::new(2.5));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, 1.9, 0.0),
         radius: -1.8,
         mat_ptr: material,
     }));
 
-    let material3 = Arc::new(Metal::new(Vec3::new(1.0, 0.9, 1.0), 0.1));
+    let material3 = Arc::new(Metal::new(Vec3::new(1.0, 0.9, 1.0), 1.0));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, 1.5, 0.0),
         radius: 1.4,
@@ -749,8 +749,8 @@ fn sphere() {
     let lookat = Vec3::new(-7.8, -1.6, 0.9);
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 20.0;
-    let aperture = 1.0;
-    let background = Vec3::new(0.0, 0.0, 0.0);
+    let aperture = 0.5;
+    let background = Vec3::new(0.01, 0.0, 0.01);
     let camera = Camera::new(
         &lookfrom,
         &lookat,
