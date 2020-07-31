@@ -8,7 +8,9 @@ pub use rand::Rng;
 pub use std::cmp::Ordering;
 pub use std::f64::consts::PI;
 pub use std::f64::INFINITY;
+use std::sync::mpsc::channel;
 pub use std::sync::Arc;
+use threadpool::ThreadPool;
 
 pub use ray::Ray;
 pub use vec3::Vec3;
@@ -215,11 +217,12 @@ pub trait Hittable: Sync + Send {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
     fn bounding_box(&self, t0: f64, t1: f64) -> Option<AABB>;
 }
+#[derive(Clone)]
 pub struct HittableList {
-    pub objects: Vec<Box<dyn Hittable>>,
+    pub objects: Vec<Arc<dyn Hittable>>,
 }
 impl HittableList {
-    pub fn add(&mut self, hittable: Box<dyn Hittable>) {
+    pub fn add(&mut self, hittable: Arc<dyn Hittable>) {
         self.objects.push(hittable);
     }
 }
@@ -554,7 +557,7 @@ fn random_scene() -> HittableList {
         &Vec3::new(0.2, 0.3, 0.1),
         &Vec3::new(0.9, 0.9, 0.9),
     ));
-    world.add(Box::new(Sphere {
+    world.add(Arc::new(Sphere {
         center: Vec3::new(0.0, -2000.0, -1.0),
         radius: 2000.0,
         mat_ptr: Arc::new(Lambertian::new_from_arc(checker)),
@@ -564,18 +567,18 @@ fn random_scene() -> HittableList {
         for b in -10..12 {
             let choose_mat = random::<f64>();
             let center = Vec3::new(
-                a as f64 + 0.7 * random::<f64>().abs(),
-                random::<f64>().abs() / 2.8 + 0.03,
-                b as f64 + 0.7 * random::<f64>().abs(),
+                a as f64 + 0.65 * random::<f64>().abs(),
+                random::<f64>().abs() / 2.5 + 0.03,
+                b as f64 + 0.65 * random::<f64>().abs(),
             );
             if ((center - Vec3::new(0.0, 2.0, 0.0)) as Vec3).length() - center.y > 2.2 {
                 if choose_mat < 0.7 {
-                    let albedo = random_positive_unit() * 0.6 + Vec3::new(0.35, 0.35, 0.2);
-                    let sphere_material = Arc::new(DiffuseLight::new_from_color(&albedo));
-                    world.add(Box::new(Sphere {
+                    world.add(Arc::new(Sphere {
                         center,
                         radius: center.y * 0.99999,
-                        mat_ptr: sphere_material,
+                        mat_ptr: Arc::new(DiffuseLight::new_from_color(
+                            &(random_positive_unit() * 0.6 + Vec3::new(0.35, 0.35, 0.2)),
+                        )),
                     }));
                     // let sphere_material = Arc::new(Metal::new(albedo, /*random::<f64>().abs()*/500.0));
                     // world.add(Box::new(Sphere {
@@ -583,27 +586,25 @@ fn random_scene() -> HittableList {
                     //     radius: center.y * 1.001 * 0.99999999,
                     //     mat_ptr: sphere_material,
                     // }));
-                    let sphere_material = Arc::new(Dielectric::new(4.0));
-                    world.add(Box::new(Sphere {
+                    world.add(Arc::new(Sphere {
                         center,
                         radius: center.y,
-                        mat_ptr: sphere_material,
+                        mat_ptr: Arc::new(Dielectric::new(4.0)),
                     }));
                 } else if choose_mat < 0.9 {
-                    let albedo = random_positive_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5);
-                    let fuzz = random::<f64>().abs() / 3.0;
-                    let sphere_material = Arc::new(Metal::new(albedo, fuzz));
-                    world.add(Box::new(Sphere {
+                    world.add(Arc::new(Sphere {
                         center,
                         radius: center.y,
-                        mat_ptr: sphere_material,
+                        mat_ptr: Arc::new(Metal::new(
+                            random_positive_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5),
+                            random::<f64>().abs() / 3.0,
+                        )),
                     }));
                 } else {
-                    let sphere_material = Arc::new(Dielectric::new(1.5));
-                    world.add(Box::new(Sphere {
+                    world.add(Arc::new(Sphere {
                         center,
                         radius: center.y,
-                        mat_ptr: sphere_material,
+                        mat_ptr: Arc::new(Dielectric::new(1.5)),
                     }));
                 }
             }
@@ -615,33 +616,28 @@ fn random_scene() -> HittableList {
     //     radius: 0.79,
     //     mat_ptr: material1,
     // }));
-    let checker1 = Arc::new(CheckerTexture::new_from_color(
-        &Vec3::new(1.0, 0.53, 0.07),
-        &Vec3::new(1.0, 0.81, 0.64),
-    ));
-    world.add(Box::new(Sphere {
+    world.add(Arc::new(Sphere {
         center: Vec3::new(0.0, 1.5, 0.0),
         radius: 1.4,
-        mat_ptr: Arc::new(DiffuseLight::new(checker1)),
+        mat_ptr: Arc::new(DiffuseLight::new(Arc::new(CheckerTexture::new_from_color(
+            &Vec3::new(1.0, 0.53, 0.07),
+            &Vec3::new(1.0, 0.81, 0.64),
+        )))),
     }));
-    let material2 = Arc::new(Dielectric::new(2.5));
-    world.add(Box::new(Sphere {
+    world.add(Arc::new(Sphere {
         center: Vec3::new(0.0, 2.0, 0.0),
         radius: 2.0,
-        mat_ptr: material2,
+        mat_ptr: Arc::new(Dielectric::new(2.5)),
     }));
-    let material = Arc::new(Dielectric::new(2.5));
-    world.add(Box::new(Sphere {
+    world.add(Arc::new(Sphere {
         center: Vec3::new(0.0, 1.9, 0.0),
         radius: -1.8,
-        mat_ptr: material,
+        mat_ptr: Arc::new(Dielectric::new(2.5)),
     }));
-
-    let material3 = Arc::new(Metal::new(Vec3::new(1.0, 0.9, 1.0), 1.0));
-    world.add(Box::new(Sphere {
+    world.add(Arc::new(Sphere {
         center: Vec3::new(0.0, 1.5, 0.0),
         radius: 1.4,
-        mat_ptr: material3,
+        mat_ptr: Arc::new(Metal::new(Vec3::new(1.0, 0.9, 1.0), 1.0)),
     }));
 
     world
@@ -669,15 +665,16 @@ fn ray_color(ray: &Ray, background: &Vec3, world: &dyn Hittable, depth: i32) -> 
     *background
 }
 
+#[derive(Clone, Copy)]
 pub struct Camera {
-    pub aspect_ratio: f64,     // = 16.0 / 9.0;
-    pub v_h: f64,              // = 2.0;
-    pub v_w: f64,              // = v_h * aspect_ratio;
-    pub f_l: f64,              // = 1.0;
-    pub ori: Vec3,             // = Vec3::zero();
-    pub horizontal: Vec3,      // = Vec3::new(v_w, 0.0, 0.0);
-    pub vertical: Vec3,        // = Vec3::new(0.0, v_h, 0.0);
-    pub low_left_corner: Vec3, // = ori - horizontal / 2.0 - vertical / 2.0 - Vec3::new(0.0, 0.0, f_l);
+    pub aspect_ratio: f64,
+    pub v_h: f64,
+    pub v_w: f64,
+    pub f_l: f64,
+    pub ori: Vec3,
+    pub horizontal: Vec3,
+    pub vertical: Vec3,
+    pub low_left_corner: Vec3,
     pub u: Vec3,
     pub v: Vec3,
     pub w: Vec3,
@@ -735,53 +732,99 @@ impl Camera {
         )
     }
 }
+
 fn sphere() {
     let i_h = 1080;
     let i_w = 1920;
+    let (tx, rx) = channel();
+    let n_jobs: usize = 32;
+    let n_workers = 4;
+    let pool = ThreadPool::new(n_workers);
+
     let samples_per_pixel = 500;
-    let max_depth = 90;
-    let mut img: RgbImage = ImageBuffer::new(i_w, i_h);
-    let bar = ProgressBar::new(i_h as u64);
+    let max_depth = 100;
 
     let world = random_scene();
 
-    let lookfrom = Vec3::new(17.0, 4.0, 12.5);
-    let lookat = Vec3::new(-7.8, -1.6, 0.9);
-    let vup = Vec3::new(0.0, 1.0, 0.0);
-    let dist_to_focus = 20.0;
-    let aperture = 0.5;
     let background = Vec3::new(0.01, 0.0, 0.01);
     let camera = Camera::new(
-        &lookfrom,
-        &lookat,
-        &vup,
+        &Vec3::new(17.0, 4.0, 12.5),
+        &Vec3::new(-7.8, -1.6, 0.9),
+        &Vec3::new(0.0, 1.0, 0.0),
         25.0,
         i_w as f64 / i_h as f64,
-        aperture,
-        dist_to_focus,
+        0.5,
+        20.0,
     );
 
-    for j in 0..i_h {
-        for i in 0..i_w {
-            let mut color = Vec3::new(0.0, 0.0, 0.0);
-            for _s in 1..samples_per_pixel {
-                let u = (i as f64 + random_num()) / ((i_w - 1) as f64);
-                let v = ((i_h - j) as f64 - random_num()) / ((i_h - 1) as f64);
-                let r = camera.get_ray(u, v);
-                color += ray_color(&r, &background, &world, max_depth);
+    let mut result: RgbImage = ImageBuffer::new(i_w, i_h);
+    let bar = ProgressBar::new(i_h as u64);
+
+    for i in 0..n_jobs {
+        let tx = tx.clone();
+        let world = world.clone();
+        let camera = camera.clone();
+        pool.execute(move || {
+            let row_begin = i_h as usize * i / n_jobs;
+            let row_end = i_h as usize * (i + 1) / n_jobs;
+            let render_height = row_end - row_begin;
+            let mut img: RgbImage = ImageBuffer::new(i_w, render_height as u32);
+            for x in 0..i_w {
+                for (img_y, y) in (row_begin..row_end).enumerate() {
+                    let y = y as u32;
+                    let mut color = Vec3::new(0.0, 0.0, 0.0);
+                    for _s in 1..samples_per_pixel {
+                        let u = (x as f64 + random_num()) / ((i_w - 1) as f64);
+                        let v = ((i_h - y) as f64 - random_num()) / ((i_h - 1) as f64);
+                        let r = camera.get_ray(u, v);
+                        color += ray_color(&r, &background, &world, max_depth);
+                    }
+                    color = color / (samples_per_pixel as f64);
+                    let pixel = img.get_pixel_mut(x, img_y as u32);
+                    *pixel = image::Rgb([
+                        (color.x.sqrt() * 255.0) as u8,
+                        (color.y.sqrt() * 255.0) as u8,
+                        (color.z.sqrt() * 255.0) as u8,
+                    ]);
+                }
             }
-            color = color / (samples_per_pixel as f64);
-            let pixel = img.get_pixel_mut(i, j);
-            *pixel = image::Rgb([
-                (color.x.sqrt() * 255.0) as u8,
-                (color.y.sqrt() * 255.0) as u8,
-                (color.z.sqrt() * 255.0) as u8,
-            ]);
+            tx.send((row_begin..row_end, img))
+                .expect("failed to send result");
+        });
+    }
+
+    // for j in 0..i_h {
+    //     for i in 0..i_w {
+    //         let mut color = Vec3::new(0.0, 0.0, 0.0);
+    //         for _s in 1..samples_per_pixel {
+    //             let u = (i as f64 + random_num()) / ((i_w - 1) as f64);
+    //             let v = ((i_h - j) as f64 - random_num()) / ((i_h - 1) as f64);
+    //             let r = camera.get_ray(u, v);
+    //             color += ray_color(&r, &background, &world, max_depth);
+    //         }
+    //         color = color / (samples_per_pixel as f64);
+    //         let pixel = img.get_pixel_mut(i, j);
+    //         *pixel = image::Rgb([
+    //             (color.x.sqrt() * 255.0) as u8,
+    //             (color.y.sqrt() * 255.0) as u8,
+    //             (color.z.sqrt() * 255.0) as u8,
+    //         ]);
+    //     }
+    //     bar.inc(1);
+    // }
+
+    for (rows, data) in rx.iter().take(n_jobs) {
+        for (idx, row) in rows.enumerate() {
+            for col in 0..i_w {
+                let row = row as u32;
+                let idx = idx as u32;
+                *result.get_pixel_mut(col, row) = *data.get_pixel(col, idx);
+            }
         }
         bar.inc(1);
     }
 
-    img.save("output/test.png").unwrap();
+    result.save("output/test.png").unwrap();
     bar.finish();
 }
 
