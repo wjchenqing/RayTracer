@@ -561,35 +561,35 @@ fn random_scene() -> HittableList {
     }));
 
     for a in -11..11 {
-        for b in -11..11 {
+        for b in -10..12 {
             let choose_mat = random::<f64>();
             let center = Vec3::new(
-                a as f64 + 0.9 * random::<f64>().abs(),
-                random::<f64>().abs() / 3.0 + 0.08,
-                b as f64 + 0.9 * random::<f64>().abs(),
+                a as f64 + 0.7 * random::<f64>().abs(),
+                random::<f64>().abs() / 2.8 + 0.03,
+                b as f64 + 0.7 * random::<f64>().abs(),
             );
-            if ((center - Vec3::new(0.0, 2.0, 0.0)) as Vec3).length() > 2.3 {
-                if choose_mat < 0.7 {
+            if ((center - Vec3::new(0.0, 2.0, 0.0)) as Vec3).length() - center.y > 2.2 {
+                if choose_mat < 0.65 {
                     let albedo = random_positive_unit() * 0.6 + Vec3::new(0.4, 0.25, 0.35);
                     let sphere_material = Arc::new(DiffuseLight::new_from_color(&albedo));
                     world.add(Box::new(Sphere {
                         center,
-                        radius: center.y * 0.999,
+                        radius: center.y * 0.99999,
                         mat_ptr: sphere_material,
                     }));
-                    // let sphere_material = Arc::new(Metal::new(albedo, random::<f64>().abs()));
+                    // let sphere_material = Arc::new(Metal::new(albedo, /*random::<f64>().abs()*/500.0));
                     // world.add(Box::new(Sphere {
                     //     center,
-                    //     radius: center.y * 0.99,
+                    //     radius: center.y * 1.001 * 0.99999999,
                     //     mat_ptr: sphere_material,
                     // }));
-                    let sphere_material = Arc::new(Dielectric::new(4.0));
+                    let sphere_material = Arc::new(Dielectric::new(3.0));
                     world.add(Box::new(Sphere {
                         center,
                         radius: center.y,
                         mat_ptr: sphere_material,
                     }));
-                } else if choose_mat < 0.9 {
+                } else if choose_mat < 0.85 {
                     let albedo = random_positive_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5);
                     let fuzz = random::<f64>().abs() / 2.0;
                     let sphere_material = Arc::new(Metal::new(albedo, fuzz));
@@ -617,7 +617,7 @@ fn random_scene() -> HittableList {
     // }));
     let checker1 = Arc::new(CheckerTexture::new_from_color(
         &Vec3::new(1.0, 0.45, 1.0),
-        &Vec3::new(1.0, 0.9, 1.0),
+        &Vec3::new(1.0, 0.7, 1.0),
     ));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, 1.5, 0.0),
@@ -637,7 +637,7 @@ fn random_scene() -> HittableList {
         mat_ptr: material,
     }));
 
-    let material3 = Arc::new(Metal::new(Vec3::new(1.0, 0.9, 1.0), 0.0));
+    let material3 = Arc::new(Metal::new(Vec3::new(1.0, 0.9, 1.0), 0.1));
     world.add(Box::new(Sphere {
         center: Vec3::new(0.0, 1.5, 0.0),
         radius: 1.4,
@@ -745,8 +745,8 @@ fn sphere() {
 
     let world = random_scene();
 
-    let lookfrom = Vec3::new(20.0, 4.0, 10.0);
-    let lookat = Vec3::new(-11.0, -0.8, -1.0);
+    let lookfrom = Vec3::new(17.0, 4.0, 12.5);
+    let lookat = Vec3::new(-7.8, -1.6, 0.9);
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let dist_to_focus = 20.0;
     let aperture = 1.0;
