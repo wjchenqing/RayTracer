@@ -130,12 +130,18 @@ impl Material for Dielectric {
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
         if (etai_over_etat * sin_theta) > 1.0 {
             let reflected = reflect(unit_dir, rec.nor);
-            Some((attenuation, Ray::new(rec.pos, reflected)))
+            Some((
+                attenuation,
+                Ray::new(rec.pos, reflected + random_unit() * 0.25),
+            ))
         } else {
             let reflect_prob = schlick(cos_theta, etai_over_etat);
             if random::<f64>() < reflect_prob {
                 let reflected = reflect(unit_dir, rec.nor);
-                Some((attenuation, Ray::new(rec.pos, reflected)))
+                Some((
+                    attenuation,
+                    Ray::new(rec.pos, reflected + random_unit() * 0.25),
+                ))
             } else {
                 let refracted = refract(&unit_dir, &rec.nor, etai_over_etat);
                 Some((attenuation, Ray::new(rec.pos, refracted)))
@@ -567,29 +573,27 @@ fn random_scene() -> HittableList {
         for b in -10..12 {
             let choose_mat = random::<f64>();
             let center = Vec3::new(
-                a as f64 + 0.65 * random::<f64>().abs(),
-                random::<f64>().abs() / 2.5 + 0.03,
-                b as f64 + 0.65 * random::<f64>().abs(),
+                a as f64 + 0.6 * random::<f64>().abs(),
+                random::<f64>().abs() * random::<f64>().abs() * 0.47 + 0.06,
+                b as f64 + 0.6 * random::<f64>().abs(),
             );
             if ((center - Vec3::new(0.0, 2.0, 0.0)) as Vec3).length() - center.y > 2.2 {
-                if choose_mat < 0.7 {
+                if choose_mat < 0.8 {
+                    let albedo = random_positive_unit() * 0.6 + Vec3::new(0.35, 0.35, 0.2);
                     world.add(Arc::new(Sphere {
                         center,
-                        radius: center.y * 0.99999,
-                        mat_ptr: Arc::new(DiffuseLight::new_from_color(
-                            &(random_positive_unit() * 0.6 + Vec3::new(0.35, 0.35, 0.2)),
-                        )),
+                        radius: center.y * 0.8,
+                        mat_ptr: Arc::new(DiffuseLight::new_from_color(&albedo)),
                     }));
-                    // let sphere_material = Arc::new(Metal::new(albedo, /*random::<f64>().abs()*/500.0));
-                    // world.add(Box::new(Sphere {
+                    // world.add(Arc::new(Sphere {
                     //     center,
-                    //     radius: center.y * 1.001 * 0.99999999,
-                    //     mat_ptr: sphere_material,
+                    //     radius: center.y,
+                    //     mat_ptr: Arc::new(Metal::new(albedo, /*random::<f64>().abs()*/ 1000.0)),
                     // }));
                     world.add(Arc::new(Sphere {
                         center,
                         radius: center.y,
-                        mat_ptr: Arc::new(Dielectric::new(4.0)),
+                        mat_ptr: Arc::new(Dielectric::new(5.0)),
                     }));
                 } else if choose_mat < 0.9 {
                     world.add(Arc::new(Sphere {
@@ -597,7 +601,7 @@ fn random_scene() -> HittableList {
                         radius: center.y,
                         mat_ptr: Arc::new(Metal::new(
                             random_positive_unit() / 2.0 + Vec3::new(0.5, 0.5, 0.5),
-                            random::<f64>().abs() / 3.0,
+                            random::<f64>().abs() / 4.0,
                         )),
                     }));
                 } else {
@@ -610,10 +614,10 @@ fn random_scene() -> HittableList {
             }
         }
     }
-    // let material1 = Arc::new(DiffuseLight::new_from_color(&Vec3::new(0.7, 0.6, 0.5)));
-    // world.add(Box::new(Sphere {
-    //     center: Vec3::new(0.0, 0.8, 0.0),
-    //     radius: 0.79,
+    // let material1 = Arc::new(DiffuseLight::new_from_color(&Vec3::new(1.0, 0.53, 0.07)));
+    // world.add(Arc::new(Sphere {
+    //     center: Vec3::new(0.0, 1.5, 0.0),
+    //     radius: 1.4,
     //     mat_ptr: material1,
     // }));
     world.add(Arc::new(Sphere {
@@ -627,18 +631,18 @@ fn random_scene() -> HittableList {
     world.add(Arc::new(Sphere {
         center: Vec3::new(0.0, 2.0, 0.0),
         radius: 2.0,
-        mat_ptr: Arc::new(Dielectric::new(2.5)),
+        mat_ptr: Arc::new(Dielectric::new(2.3)),
     }));
     world.add(Arc::new(Sphere {
-        center: Vec3::new(0.0, 1.9, 0.0),
-        radius: -1.8,
-        mat_ptr: Arc::new(Dielectric::new(2.5)),
+        center: Vec3::new(0.0, 1.85, 0.0),
+        radius: -1.75,
+        mat_ptr: Arc::new(Dielectric::new(2.3)),
     }));
-    world.add(Arc::new(Sphere {
-        center: Vec3::new(0.0, 1.5, 0.0),
-        radius: 1.4,
-        mat_ptr: Arc::new(Metal::new(Vec3::new(1.0, 0.9, 1.0), 1.0)),
-    }));
+    // world.add(Arc::new(Sphere {
+    //     center: Vec3::new(0.0, 1.5, 0.0),
+    //     radius: 1.4001,
+    //     mat_ptr: Arc::new(Metal::new(Vec3::new(1.0, 0.9, 1.0), 500.0)),
+    // }));
 
     world
 }
@@ -746,24 +750,23 @@ fn sphere() {
 
     let world = random_scene();
 
-    let background = Vec3::new(0.01, 0.0, 0.01);
+    let background = Vec3::new(0.0, 0.0, 0.0);
     let camera = Camera::new(
         &Vec3::new(17.0, 4.0, 12.5),
         &Vec3::new(-7.8, -1.6, 0.9),
         &Vec3::new(0.0, 1.0, 0.0),
         25.0,
         i_w as f64 / i_h as f64,
-        0.5,
+        1.5,
         20.0,
     );
 
     let mut result: RgbImage = ImageBuffer::new(i_w, i_h);
-    let bar = ProgressBar::new(i_h as u64);
+    let bar = ProgressBar::new(n_jobs as u64);
 
     for i in 0..n_jobs {
         let tx = tx.clone();
         let world = world.clone();
-        let camera = camera.clone();
         pool.execute(move || {
             let row_begin = i_h as usize * i / n_jobs;
             let row_end = i_h as usize * (i + 1) / n_jobs;
