@@ -140,7 +140,7 @@ impl Material for Dielectric {
                 let reflected = reflect(unit_dir, rec.nor);
                 Some((
                     attenuation,
-                    Ray::new(rec.pos, reflected + random_unit() * 0.25),
+                    Ray::new(rec.pos, reflected + random_unit() * 0.15),
                 ))
             } else {
                 let refracted = refract(&unit_dir, &rec.nor, etai_over_etat);
@@ -201,7 +201,12 @@ impl DiffuseLight {
     }
 }
 impl Material for DiffuseLight {
-    fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<(Vec3, Ray)> {
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
+        let reflected = reflect(r_in.dir.unit(), rec.nor);
+        let scattered = Ray::new(rec.pos, reflected + random_unit() * 0.2);
+        if reflected * rec.nor > 0.0 {
+            return Some((self.emit.value(0.0, 0.0, &Vec3::new(0.0, 0.0, 0.0)), scattered));
+        }
         None
     }
     fn emitted(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
@@ -590,11 +595,11 @@ fn random_scene() -> HittableList {
                     //     radius: center.y,
                     //     mat_ptr: Arc::new(Metal::new(albedo, /*random::<f64>().abs()*/ 1000.0)),
                     // }));
-                    world.add(Arc::new(Sphere {
-                        center,
-                        radius: center.y,
-                        mat_ptr: Arc::new(Dielectric::new(5.0)),
-                    }));
+                    // world.add(Arc::new(Sphere {
+                    //     center,
+                    //     radius: center.y,
+                    //     mat_ptr: Arc::new(Dielectric::new(5.0)),
+                    // }));
                 } else if choose_mat < 0.9 {
                     world.add(Arc::new(Sphere {
                         center,
