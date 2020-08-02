@@ -736,7 +736,10 @@ impl Camera {
         }
     }
     pub fn get_ray(&self, s: f64, t: f64) -> Ray {
-        let rd: Vec3 = random_in_unit_disk() * self.len_radius;
+        let rd: Vec3 = Vec3::elemul(
+            random_in_unit_disk() * self.len_radius,
+            Vec3::new(16.0, 9.0, 0.0).unit(),
+        );
         let offset = self.u * rd.x + self.v * rd.y;
         Ray::new(
             self.ori + offset,
