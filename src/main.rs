@@ -205,7 +205,10 @@ impl Material for DiffuseLight {
         let reflected = reflect(r_in.dir.unit(), rec.nor);
         let scattered = Ray::new(rec.pos, reflected + random_unit() * 0.2);
         if reflected * rec.nor > 0.0 {
-            return Some((self.emit.value(0.0, 0.0, &Vec3::new(0.0, 0.0, 0.0)), scattered));
+            return Some((
+                self.emit.value(0.0, 0.0, &Vec3::new(0.0, 0.0, 0.0)),
+                scattered,
+            ));
         }
         None
     }
@@ -590,16 +593,16 @@ fn random_scene() -> HittableList {
                         radius: center.y * 0.8,
                         mat_ptr: Arc::new(DiffuseLight::new_from_color(&albedo)),
                     }));
-                    // world.add(Arc::new(Sphere {
-                    //     center,
-                    //     radius: center.y,
-                    //     mat_ptr: Arc::new(Metal::new(albedo, /*random::<f64>().abs()*/ 1000.0)),
-                    // }));
-                    // world.add(Arc::new(Sphere {
-                    //     center,
-                    //     radius: center.y,
-                    //     mat_ptr: Arc::new(Dielectric::new(5.0)),
-                    // }));
+                // world.add(Arc::new(Sphere {
+                //     center,
+                //     radius: center.y,
+                //     mat_ptr: Arc::new(Metal::new(albedo, /*random::<f64>().abs()*/ 1000.0)),
+                // }));
+                // world.add(Arc::new(Sphere {
+                //     center,
+                //     radius: center.y,
+                //     mat_ptr: Arc::new(Dielectric::new(5.0)),
+                // }));
                 } else if choose_mat < 0.9 {
                     world.add(Arc::new(Sphere {
                         center,
@@ -734,7 +737,7 @@ impl Camera {
     }
     pub fn get_ray(&self, s: f64, t: f64) -> Ray {
         let rd: Vec3 = random_in_unit_disk() * self.len_radius;
-        let offset = self.u * rd.x * rd.y;
+        let offset = self.u * rd.x + self.v * rd.y;
         Ray::new(
             self.ori + offset,
             self.low_left_corner + self.horizontal * s + self.vertical * t - self.ori - offset,
@@ -762,7 +765,7 @@ fn sphere() {
         &Vec3::new(0.0, 1.0, 0.0),
         25.0,
         i_w as f64 / i_h as f64,
-        1.5,
+        0.5,
         20.0,
     );
 
