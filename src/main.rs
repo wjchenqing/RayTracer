@@ -33,7 +33,7 @@ fn random_unit() -> Vec3 {
     let y = random::<i32>();
     let z = random::<i32>();
     let tmp = Vec3::new(x as f64, y as f64, z as f64);
-    if tmp.length() == 0.0 {
+    if tmp.length() == 0.0 || tmp.length() > 1.0{
         return random_unit();
     }
     -tmp.unit()
@@ -68,7 +68,7 @@ pub struct Lambertian {
 }
 impl Material for Lambertian {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
-        let scatter_direction = rec.nor + random_vec(&rec.nor);
+        let scatter_direction = rec.nor + random_vec(&rec.nor) * 55.0;
         let scattered = Ray::new(rec.pos, scatter_direction);
         Some((self.albedo.value(rec.u, rec.v, &rec.pos), scattered))
     }
@@ -202,14 +202,14 @@ impl DiffuseLight {
 }
 impl Material for DiffuseLight {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
-        let reflected = reflect(r_in.dir.unit(), rec.nor);
-        let scattered = Ray::new(rec.pos, reflected + random_unit() * 0.2);
-        if reflected * rec.nor > 0.0 {
-            return Some((
-                self.emit.value(0.0, 0.0, &Vec3::new(0.0, 0.0, 0.0)),
-                scattered,
-            ));
-        }
+        // let reflected = Vec3::new(0.0, -1.0, 0.0);//reflect(r_in.dir.unit(), rec.nor);
+        // let scattered = Ray::new(rec.pos, reflected + random_vec(&rec.nor));
+        // if reflected * rec.nor > 0.0 {
+        //     return Some((
+        //         self.emit.value(0.0, 0.0, &Vec3::new(0.0, 0.0, 0.0)),
+        //         scattered,
+        //     ));
+        // }
         None
     }
     fn emitted(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
@@ -356,6 +356,167 @@ impl Hittable for Sphere {
         Some(AABB::new(
             &(self.center - Vec3::new(self.radius, self.radius, self.radius)),
             &(self.center + Vec3::new(self.radius, self.radius, self.radius)),
+        ))
+    }
+}
+pub struct XyRect {
+    pub mp: Arc<dyn Material>,
+    pub x0: f64,
+    pub x1: f64,
+    pub y0: f64,
+    pub y1: f64,
+    pub k: f64,
+}
+impl XyRect {
+    pub fn new(x0: &f64, x1: &f64, y0: &f64, y1: &f64, k: &f64, mp: &Arc<dyn Material>) -> Self {
+        Self {
+            x0: *x0,
+            x1: *x1,
+            y0: *y0,
+            y1: *y1,
+            k: *k,
+            mp: mp.clone(),
+        }
+    }
+}
+impl Hittable for XyRect {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let t = (self.k - ray.ori.z) / ray.dir.z;
+        if t < t_min || t > t_max {
+            return None;
+        }
+        let x = ray.ori.x + t * ray.dir.x;
+        let y = ray.ori.y + t * ray.dir.y;
+        if x < self.x0 || x > self.x1 || y < self.y0 || y > self.y1 {
+            return None;
+        }
+        let mut nor = Vec3::new(0.0, 0.0, 1.0);
+        let flag = (ray.dir * nor) < 0.0;
+        if !flag {
+            nor = -nor;
+        }
+        Some(HitRecord {
+            u: (x - self.x0) / (self.x1 - self.x0),
+            v: (y - self.y0) / (self.y1 - self.y0),
+            t,
+            nor,
+            front_face: flag,
+            mat_ptr: self.mp.clone(),
+            pos: ray.at(t),
+        })
+    }
+    fn bounding_box(&self, _t0: f64, _t1: f64) -> Option<AABB> {
+        Some(AABB::new(
+            &Vec3::new(self.x0, self.y0, self.k - 0.0001),
+            &Vec3::new(self.x1, self.y1, self.k + 0.0001),
+        ))
+    }
+}
+
+pub struct XzRect {
+    pub mp: Arc<dyn Material>,
+    pub x0: f64,
+    pub x1: f64,
+    pub z0: f64,
+    pub z1: f64,
+    pub k: f64,
+}
+impl XzRect {
+    pub fn new(x0: &f64, x1: &f64, z0: &f64, z1: &f64, k: &f64, mp: &Arc<dyn Material>) -> Self {
+        Self {
+            x0: *x0,
+            x1: *x1,
+            z0: *z0,
+            z1: *z1,
+            k: *k,
+            mp: mp.clone(),
+        }
+    }
+}
+impl Hittable for XzRect {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let t = (self.k - ray.ori.y) / ray.dir.y;
+        if t < t_min || t > t_max {
+            return None;
+        }
+        let x = ray.ori.x + t * ray.dir.x;
+        let z = ray.ori.z + t * ray.dir.z;
+        if x < self.x0 || x > self.x1 || z < self.z0 || z > self.z1 {
+            return None;
+        }
+        let mut nor = Vec3::new(0.0, 0.0, 1.0);
+        let flag = (ray.dir * nor) < 0.0;
+        if !flag {
+            nor = -nor;
+        }
+        Some(HitRecord {
+            u: (x - self.x0) / (self.x1 - self.x0),
+            v: (z - self.z0) / (self.z1 - self.z0),
+            t,
+            nor,
+            front_face: flag,
+            mat_ptr: self.mp.clone(),
+            pos: ray.at(t),
+        })
+    }
+    fn bounding_box(&self, _t0: f64, _t1: f64) -> Option<AABB> {
+        Some(AABB::new(
+            &Vec3::new(self.x0, self.k - 0.0001, self.z0),
+            &Vec3::new(self.x1, self.k + 0.0001, self.z1),
+        ))
+    }
+}
+
+pub struct YzRect {
+    pub mp: Arc<dyn Material>,
+    pub z0: f64,
+    pub z1: f64,
+    pub y0: f64,
+    pub y1: f64,
+    pub k: f64,
+}
+impl YzRect {
+    pub fn new(y0: &f64, y1: &f64, z0: &f64, z1: &f64, k: &f64, mp: &Arc<dyn Material>) -> Self {
+        Self {
+            y0: *y0,
+            y1: *y1,
+            z0: *z0,
+            z1: *z1,
+            k: *k,
+            mp: mp.clone(),
+        }
+    }
+}
+impl Hittable for YzRect {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let t = (self.k - ray.ori.x) / ray.dir.x;
+        if t < t_min || t > t_max {
+            return None;
+        }
+        let z = ray.ori.z + t * ray.dir.z;
+        let y = ray.ori.y + t * ray.dir.y;
+        if z < self.z0 || z > self.z1 || y < self.y0 || y > self.y1 {
+            return None;
+        }
+        let mut nor = Vec3::new(0.0, 0.0, 1.0);
+        let flag = (ray.dir * nor) < 0.0;
+        if !flag {
+            nor = -nor;
+        }
+        Some(HitRecord {
+            u: (z - self.z0) / (self.z1 - self.z0),
+            v: (y - self.y0) / (self.y1 - self.y0),
+            t,
+            nor,
+            front_face: flag,
+            mat_ptr: self.mp.clone(),
+            pos: ray.at(t),
+        })
+    }
+    fn bounding_box(&self, _t0: f64, _t1: f64) -> Option<AABB> {
+        Some(AABB::new(
+            &Vec3::new(self.k - 0.0001, self.y0, self.z0),
+            &Vec3::new(self.k + 0.0001, self.y1, self.z1),
         ))
     }
 }
@@ -558,7 +719,7 @@ impl Texture for CheckerTexture {
     }
 }
 
-fn random_scene() -> HittableList {
+/*fn random_scene() -> HittableList {
     let mut world = HittableList { objects: vec![] };
 
     // let material_ground = Arc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5)));
@@ -653,6 +814,93 @@ fn random_scene() -> HittableList {
     // }));
 
     world
+}*/
+
+/*fn simple_light() -> HittableList {
+    let mut objects = HittableList { objects: vec![] };
+
+    let checker = Arc::new(CheckerTexture::new_from_color(
+        &Vec3::new(0.2, 0.3, 0.1),
+        &Vec3::new(0.9, 0.9, 0.9),
+    ));
+    objects.add(Arc::new(Sphere {
+        center: Vec3::new(0.0, -1000.0, 0.0),
+        radius: 1000.0,
+        mat_ptr: Arc::new(Lambertian::new_from_arc(checker.clone())),
+    }));
+    objects.add(Arc::new(Sphere {
+        center: Vec3::new(0.0, 2.0, 0.0),
+        radius: 2.0,
+        mat_ptr: Arc::new(Lambertian::new_from_arc(checker)),
+    }));
+    let difflight = Arc::new(DiffuseLight::new_from_color(&Vec3::new(4.0, 4.0, 4.0)));
+    objects.add(Arc::new(XyRect {
+        x0: 3.0,
+        x1: 5.0,
+        y0: 1.0,
+        y1: 3.0,
+        k: -2.0,
+        mp: difflight,
+    }));
+
+    objects
+}*/
+
+fn cornell_box() -> HittableList {
+    let mut objects = HittableList { objects: vec![] };
+    let red = Arc::new(Lambertian::new(Vec3::new(0.65, 0.05, 0.05)));
+    let white = Arc::new(Lambertian::new(Vec3::new(0.73, 0.73, 0.73)));
+    let green = Arc::new(Lambertian::new(Vec3::new(0.12, 0.45, 0.15)));
+    let light = Arc::new(DiffuseLight::new_from_color(&Vec3::new(25.0, 25.0, 25.0)));
+    objects.add(Arc::new(YzRect {
+        y0: 0.0,
+        y1: 555.0,
+        z0: 0.0,
+        z1: 555.0,
+        k: 555.0,
+        mp: green,
+    }));
+    objects.add(Arc::new(YzRect {
+        y0: 0.0,
+        y1: 555.0,
+        z0: 0.0,
+        z1: 555.0,
+        k: 0.0,
+        mp: red,
+    }));
+    objects.add(Arc::new(XzRect {
+        x0: 213.0,
+        x1: 343.0,
+        z0: 227.0,
+        z1: 332.0,
+        k: 554.0,
+        mp: light,
+    }));
+    objects.add(Arc::new(XzRect {
+        x0: 0.0,
+        x1: 555.0,
+        z0: 0.0,
+        z1: 555.0,
+        k: 0.0,
+        mp: white.clone(),
+    }));
+    objects.add(Arc::new(XzRect {
+        x0: 0.0,
+        x1: 555.0,
+        z0: 0.0,
+        z1: 555.0,
+        k: 555.0,
+        mp: white.clone(),
+    }));
+    objects.add(Arc::new(XyRect {
+        x0: 0.0,
+        x1: 555.0,
+        y0: 0.0,
+        y1: 555.0,
+        k: 555.0,
+        mp: white,
+    }));
+    objects
 }
 
 fn ray_color(ray: &Ray, background: &Vec3, world: &dyn Hittable, depth: i32) -> Vec3 {
@@ -749,26 +997,32 @@ impl Camera {
 }
 
 fn sphere() {
-    let i_h = 1080;
-    let i_w = 1920;
+    let i_h = 600;
+    let i_w = 600;
     let (tx, rx) = channel();
     let n_jobs: usize = 32;
     let n_workers = 4;
     let pool = ThreadPool::new(n_workers);
 
-    let samples_per_pixel = 500;
-    let max_depth = 100;
+    let samples_per_pixel = 200;
+    let max_depth = 50;
 
-    let world = random_scene();
+    // let world = random_scene();
+    // let world = simple_light();
+    let world = cornell_box();
 
     let background = Vec3::new(0.0, 0.0, 0.0);
     let camera = Camera::new(
-        &Vec3::new(17.0, 4.0, 12.5),
-        &Vec3::new(-7.8, -1.6, 0.9),
+        // &Vec3::new(17.0, 4.0, 12.5),
+        // &Vec3::new(-7.8, -1.6, 0.9),
+        // &Vec3::new(0.0, 1.0, 0.0),
+        // 25.0,
+        &Vec3::new(278.0, 278.0, -800.0),
+        &Vec3::new(278.0, 278.0, 0.0),
         &Vec3::new(0.0, 1.0, 0.0),
-        25.0,
+        40.0,
         i_w as f64 / i_h as f64,
-        0.5,
+        0.0,
         20.0,
     );
 
