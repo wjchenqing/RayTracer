@@ -4,7 +4,7 @@ mod vec3;
 use image::{ImageBuffer, RgbImage};
 use indicatif::ProgressBar;
 pub use rand::random;
-pub use rand::Rng;
+pub use rand::{rngs::SmallRng, Rng};
 pub use std::cmp::Ordering;
 pub use std::f64::consts::PI;
 pub use std::f64::INFINITY;
@@ -18,7 +18,7 @@ pub use vec3::Vec3;
 fn random_num() -> f64 {
     random::<f64>()
 }
-fn random_positive_unit() -> Vec3 {
+/*fn random_positive_unit() -> Vec3 {
     let x = random::<f64>().abs();
     let y = random::<f64>().abs();
     let z = random::<f64>().abs();
@@ -27,21 +27,21 @@ fn random_positive_unit() -> Vec3 {
         return random_positive_unit();
     }
     tmp.unit()
-}
+}*/
 fn random_unit() -> Vec3 {
-    let x = random::<i32>();
-    let y = random::<i32>();
-    let z = random::<i32>();
+    let x = random::<f64>() * 2.0 - 1.0;
+    let y = random::<f64>() * 2.0 - 1.0;
+    let z = random::<f64>() * 2.0 - 1.0;
     let tmp = Vec3::new(x as f64, y as f64, z as f64);
-    if tmp.length() == 0.0 || tmp.length() > 1.0{
+    if tmp.length() == 0.0 || tmp.length() > 1.0 {
         return random_unit();
     }
     -tmp.unit()
 }
 fn random_vec(nor: &Vec3) -> Vec3 {
-    let x = random::<i32>();
-    let y = random::<i32>();
-    let z = random::<i32>();
+    let x = random::<f64>() * 2.0 - 1.0;
+    let y = random::<f64>() * 2.0 - 1.0;
+    let z = random::<f64>() * 2.0 - 1.0;
     let tmp = Vec3::new(x as f64, y as f64, z as f64);
     if tmp.length() == 0.0 {
         return random_vec(nor);
@@ -49,7 +49,7 @@ fn random_vec(nor: &Vec3) -> Vec3 {
     if tmp * *nor > 0.0 {
         return tmp.unit();
     }
-    -tmp.unit()
+    tmp.unit()
 }
 fn random_in_unit_disk() -> Vec3 {
     let p = Vec3::new(random::<f64>(), random::<f64>(), 0.0);
@@ -68,7 +68,7 @@ pub struct Lambertian {
 }
 impl Material for Lambertian {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
-        let scatter_direction = rec.nor + random_vec(&rec.nor) * 55.0;
+        let scatter_direction = /*rec.nor +*/ random_vec(&rec.nor) * 55.0;
         let scattered = Ray::new(rec.pos, scatter_direction);
         Some((self.albedo.value(rec.u, rec.v, &rec.pos), scattered))
     }
@@ -201,7 +201,7 @@ impl DiffuseLight {
     }
 }
 impl Material for DiffuseLight {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
+    fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<(Vec3, Ray)> {
         // let reflected = Vec3::new(0.0, -1.0, 0.0);//reflect(r_in.dir.unit(), rec.nor);
         // let scattered = Ray::new(rec.pos, reflected + random_vec(&rec.nor));
         // if reflected * rec.nor > 0.0 {
@@ -518,6 +518,210 @@ impl Hittable for YzRect {
             &Vec3::new(self.k - 0.0001, self.y0, self.z0),
             &Vec3::new(self.k + 0.0001, self.y1, self.z1),
         ))
+    }
+}
+
+pub struct Box {
+    pub box_min: Vec3,
+    pub box_max: Vec3,
+    pub sides: HittableList,
+}
+impl Box {
+    pub fn new(p0: &Vec3, p1: &Vec3, ptr: &Arc<Lambertian>) -> Self {
+        let box_min = *p0;
+        let box_max = *p1;
+        let mut sides = HittableList { objects: vec![] };
+        sides.add(Arc::new(XyRect {
+            x0: p0.x,
+            x1: p1.x,
+            y0: p0.y,
+            y1: p1.y,
+            k: p1.z,
+            mp: ptr.clone(),
+        }));
+        sides.add(Arc::new(XyRect {
+            x0: p0.x,
+            x1: p1.x,
+            y0: p0.y,
+            y1: p1.y,
+            k: p0.z,
+            mp: ptr.clone(),
+        }));
+        sides.add(Arc::new(XzRect {
+            x0: p0.x,
+            x1: p1.x,
+            z0: p0.z,
+            z1: p1.z,
+            k: p1.y,
+            mp: ptr.clone(),
+        }));
+        sides.add(Arc::new(XzRect {
+            x0: p0.x,
+            x1: p1.x,
+            z0: p0.z,
+            z1: p1.z,
+            k: p0.y,
+            mp: ptr.clone(),
+        }));
+        sides.add(Arc::new(YzRect {
+            y0: p0.y,
+            y1: p1.y,
+            z0: p0.z,
+            z1: p1.z,
+            k: p0.x,
+            mp: ptr.clone(),
+        }));
+        sides.add(Arc::new(YzRect {
+            y0: p0.y,
+            y1: p1.y,
+            z0: p0.z,
+            z1: p1.z,
+            k: p1.x,
+            mp: ptr.clone(),
+        }));
+        Self {
+            box_min,
+            box_max,
+            sides,
+        }
+    }
+}
+impl Hittable for Box {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        self.sides.hit(ray, t_min, t_max)
+    }
+    fn bounding_box(&self, _t0: f64, _t1: f64) -> Option<AABB> {
+        Some(AABB::new(&self.box_min, &self.box_max))
+    }
+}
+
+pub struct Translate {
+    pub ptr: Arc<dyn Hittable>,
+    pub offset: Vec3,
+}
+impl Translate {
+    pub fn new(p: &Arc<RotateY>, displacement: &Vec3) -> Self {
+        Self {
+            ptr: p.clone(),
+            offset: *displacement,
+        }
+    }
+}
+impl Hittable for Translate {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let moved_r = Ray::new(ray.ori - self.offset, ray.dir);
+        if let Some(mut rec) = self.ptr.hit(&moved_r, t_min, t_max) {
+            let flag = (moved_r.dir * rec.nor) < 0.0;
+            if !flag {
+                rec.nor = -rec.nor;
+            }
+            return Some(HitRecord {
+                pos: rec.pos + self.offset,
+                nor: rec.nor,
+                front_face: flag,
+                mat_ptr: rec.mat_ptr,
+                u: rec.u,
+                t: rec.t,
+                v: rec.v,
+            });
+        }
+        None
+    }
+    fn bounding_box(&self, t0: f64, t1: f64) -> Option<AABB> {
+        if let Some(tmp) = self.ptr.bounding_box(t0, t1) {
+            return Some(AABB::new(
+                &(tmp._min + self.offset),
+                &(tmp._max + self.offset),
+            ));
+        }
+        None
+    }
+}
+
+pub struct RotateY {
+    pub ptr: Arc<Box>,
+    pub sin_theta: f64,
+    pub cos_theta: f64,
+    pub has_box: bool,
+    pub bbox: AABB,
+}
+impl RotateY {
+    pub fn new(ptr: &Arc<Box>, angle: f64) -> Self {
+        let radians = angle / 180.0 * PI;
+        let sin_theta = radians.sin();
+        let cos_theta = radians.cos();
+        let mut _min = Vec3::new(f64::MAX, f64::MAX, f64::MAX);
+        let mut _max = Vec3::new(-f64::MAX, -f64::MAX, -f64::MAX);
+        if let Some(bbox) = ptr.bounding_box(0.0, 1.0) {
+            let has_box = true;
+            for i in 0..1 {
+                for j in 0..1 {
+                    for k in 0..1 {
+                        let x = i as f64 * bbox._max.x + (1 - i) as f64 * bbox._min.x;
+                        let y = j as f64 * bbox._max.y + (1 - j) as f64 * bbox._min.y;
+                        let z = k as f64 * bbox._max.z + (1 - k) as f64 * bbox._min.z;
+                        let new_x = cos_theta * x + sin_theta * z;
+                        let new_z = -sin_theta * x + cos_theta * z;
+                        _min.x = _min.x.min(new_x);
+                        _min.y = _min.y.min(y);
+                        _min.z = _min.z.min(new_z);
+                        _max.x = _max.x.max(new_x);
+                        _max.y = _max.y.max(y);
+                        _max.z = _max.z.max(new_z);
+                    }
+                }
+            }
+            let bbox = AABB::new(&_min, &_max);
+            Self {
+                ptr: ptr.clone(),
+                sin_theta,
+                cos_theta,
+                bbox,
+                has_box,
+            }
+        } else {
+            panic!();
+        }
+    }
+}
+impl Hittable for RotateY {
+    fn bounding_box(&self, _t0: f64, _t1: f64) -> Option<AABB> {
+        if self.has_box {
+            Some(self.bbox)
+        } else {
+            None
+        }
+    }
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let mut ori = ray.ori;
+        let mut dir = ray.dir;
+        ori.x = self.cos_theta * ray.ori.x - self.sin_theta * ray.ori.z;
+        ori.z = self.sin_theta * ray.ori.x + self.cos_theta * ray.ori.z;
+        dir.x = self.cos_theta * ray.dir.x - self.sin_theta * ray.dir.z;
+        dir.z = self.sin_theta * ray.dir.x + self.cos_theta * ray.dir.z;
+        let rotated_r = Ray::new(ori, dir);
+        if let Some(rec) = self.ptr.hit(&rotated_r, t_min, t_max) {
+            let mut pos = rec.pos;
+            let mut nor = rec.nor;
+            pos.x = self.cos_theta * rec.pos.x + self.sin_theta * rec.pos.z;
+            pos.z = -self.sin_theta * rec.pos.x + self.cos_theta * rec.pos.z;
+            nor.x = self.cos_theta * rec.nor.x + self.sin_theta * rec.nor.z;
+            nor.z = -self.sin_theta * rec.nor.x + self.cos_theta * rec.nor.z;
+            let flag = (rotated_r.dir * rec.nor) < 0.0;
+            if !flag {
+                nor = -nor;
+            }
+            return Some(HitRecord {
+                pos,
+                nor,
+                front_face: flag,
+                mat_ptr: rec.mat_ptr,
+                u: rec.u,
+                t: rec.t,
+                v: rec.v,
+            });
+        }
+        None
     }
 }
 
@@ -851,7 +1055,7 @@ fn cornell_box() -> HittableList {
     let red = Arc::new(Lambertian::new(Vec3::new(0.65, 0.05, 0.05)));
     let white = Arc::new(Lambertian::new(Vec3::new(0.73, 0.73, 0.73)));
     let green = Arc::new(Lambertian::new(Vec3::new(0.12, 0.45, 0.15)));
-    let light = Arc::new(DiffuseLight::new_from_color(&Vec3::new(25.0, 25.0, 25.0)));
+    let light = Arc::new(DiffuseLight::new_from_color(&Vec3::new(15.0, 15.0, 15.0)));
     objects.add(Arc::new(YzRect {
         y0: 0.0,
         y1: 555.0,
@@ -898,8 +1102,30 @@ fn cornell_box() -> HittableList {
         y0: 0.0,
         y1: 555.0,
         k: 555.0,
-        mp: white,
+        mp: white.clone(),
     }));
+    objects.add(Arc::new(Translate::new(
+        &Arc::new(RotateY::new(
+            &Arc::new(Box::new(
+                &Vec3::new(0.0, 0.0, 0.0),
+                &Vec3::new(165.0, 330.0, 165.0),
+                &white,
+            )),
+            15.0,
+        )),
+        &Vec3::new(265.0, 0.0, 295.0),
+    )));
+    objects.add(Arc::new(Translate::new(
+        &Arc::new(RotateY::new(
+            &Arc::new(Box::new(
+                &Vec3::new(0.0, 0.0, 0.0),
+                &Vec3::new(165.0, 165.0, 165.0),
+                &white,
+            )),
+            -18.0,
+        )),
+        &Vec3::new(130.0, 0.0, 65.0),
+    )));
     objects
 }
 
@@ -984,10 +1210,11 @@ impl Camera {
         }
     }
     pub fn get_ray(&self, s: f64, t: f64) -> Ray {
-        let rd: Vec3 = Vec3::elemul(
-            random_in_unit_disk() * self.len_radius,
-            Vec3::new(16.0, 9.0, 0.0).unit(),
-        );
+        // let rd: Vec3 = Vec3::elemul(
+        //     random_in_unit_disk() * self.len_radius,
+        //     Vec3::new(16.0, 9.0, 0.0).unit(),
+        // );
+        let rd = random_in_unit_disk() * self.len_radius;
         let offset = self.u * rd.x + self.v * rd.y;
         Ray::new(
             self.ori + offset,
@@ -1004,7 +1231,7 @@ fn sphere() {
     let n_workers = 4;
     let pool = ThreadPool::new(n_workers);
 
-    let samples_per_pixel = 200;
+    let samples_per_pixel = 500;
     let max_depth = 50;
 
     // let world = random_scene();
