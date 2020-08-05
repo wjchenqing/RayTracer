@@ -36,21 +36,21 @@ fn random_unit() -> Vec3 {
     if tmp.length() == 0.0 || tmp.length() > 1.0 {
         return random_unit();
     }
-    -tmp.unit()
+    tmp.unit()
 }
-fn random_vec(nor: &Vec3) -> Vec3 {
+/*fn random_vec(nor: &Vec3) -> Vec3 {
     let x = random::<f64>() * 2.0 - 1.0;
     let y = random::<f64>() * 2.0 - 1.0;
     let z = random::<f64>() * 2.0 - 1.0;
     let tmp = Vec3::new(x as f64, y as f64, z as f64);
-    if tmp.length() == 0.0 {
+    if tmp.length() == 0.0 || tmp.length() > 1.0{
         return random_vec(nor);
     }
     if tmp * *nor > 0.0 {
         return tmp.unit();
     }
-    tmp.unit()
-}
+    -tmp.unit()
+}*/
 fn random_in_unit_disk() -> Vec3 {
     let p = Vec3::new(random::<f64>(), random::<f64>(), 0.0);
     if p.squared_length() >= 1.0 {
@@ -68,7 +68,7 @@ pub struct Lambertian {
 }
 impl Material for Lambertian {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
-        let scatter_direction = /*rec.nor +*/ random_vec(&rec.nor) * 55.0;
+        let scatter_direction = rec.nor + random_unit();
         let scattered = Ray::new(rec.pos, scatter_direction);
         Some((self.albedo.value(rec.u, rec.v, &rec.pos), scattered))
     }
@@ -444,7 +444,7 @@ impl Hittable for XzRect {
         if x < self.x0 || x > self.x1 || z < self.z0 || z > self.z1 {
             return None;
         }
-        let mut nor = Vec3::new(0.0, 0.0, 1.0);
+        let mut nor = Vec3::new(0.0, 1.0, 0.0);
         let flag = (ray.dir * nor) < 0.0;
         if !flag {
             nor = -nor;
@@ -498,7 +498,7 @@ impl Hittable for YzRect {
         if z < self.z0 || z > self.z1 || y < self.y0 || y > self.y1 {
             return None;
         }
-        let mut nor = Vec3::new(0.0, 0.0, 1.0);
+        let mut nor = Vec3::new(1.0, 0.0, 0.0);
         let flag = (ray.dir * nor) < 0.0;
         if !flag {
             nor = -nor;
@@ -1080,6 +1080,11 @@ fn cornell_box() -> HittableList {
         k: 554.0,
         mp: light,
     }));
+    // objects.add(Arc::new(Sphere {
+    //     center: Vec3::new(278.0, 554.0, 280.0),
+    //     radius: 65.0,
+    //     mat_ptr: light,
+    // }));
     objects.add(Arc::new(XzRect {
         x0: 0.0,
         x1: 555.0,
@@ -1231,7 +1236,7 @@ fn sphere() {
     let n_workers = 4;
     let pool = ThreadPool::new(n_workers);
 
-    let samples_per_pixel = 500;
+    let samples_per_pixel = 200;
     let max_depth = 50;
 
     // let world = random_scene();
