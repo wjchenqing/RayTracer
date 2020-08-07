@@ -40,7 +40,7 @@ impl Material for Lambertian {
             0.0
         }
     }
-    fn emitted(&self, _r_in: &Ray, rec: &HitRecord, u: f64, v: f64, p: &Vec3) -> Vec3 {
+    fn emitted(&self, _r_in: &Ray, _rec: &HitRecord, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
         Vec3::zero()
     }
 }
