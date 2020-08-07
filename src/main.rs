@@ -2,6 +2,7 @@
 mod bvh;
 mod hittable;
 mod material;
+mod onb;
 mod randomtool;
 mod ray;
 mod scene;
@@ -21,6 +22,7 @@ use threadpool::ThreadPool;
 pub use bvh::*;
 pub use hittable::*;
 pub use material::*;
+pub use onb::*;
 pub use randomtool::*;
 pub use ray::Ray;
 pub use scene::*;
@@ -34,12 +36,31 @@ fn ray_color(ray: &Ray, background: &Vec3, world: &dyn Hittable, depth: i32) -> 
     let tmp = world.hit(ray, 0.001, f64::MAX);
     if let Some(rec) = tmp {
         let tmp = rec.mat_ptr.scatter(ray, &rec);
-        if let Some((attenuation, scattered)) = tmp {
+        if let Some((attenuation, _scattered, _pdf)) = tmp {
+            let on_light = Vec3::new(
+                213.0 + (343.0 - 213.0) * random::<f64>(),
+                554.0,
+                227.0 + (332.0 - 227.0) * random::<f64>(),
+            );
+            let to_light = on_light - rec.pos;
+            let distance_squared = to_light.squared_length();
+            let to_light = to_light.unit();
+            if to_light * rec.nor < 0.0 {
+                return rec.mat_ptr.emitted(rec.u, rec.v, &rec.pos);
+            }
+            let light_area = (343.0 - 213.0) * (332.0 - 227.0);
+            let light_cosine = to_light.y.abs();
+            if light_cosine < 0.000001 {
+                return rec.mat_ptr.emitted(rec.u, rec.v, &rec.pos);
+            }
+            let pdf = distance_squared / (light_area * light_cosine);
+            let scattered = Ray::new(rec.pos, to_light);
             return rec.mat_ptr.emitted(rec.u, rec.v, &rec.pos)
                 + vec3::Vec3::elemul(
                     attenuation,
                     ray_color(&scattered, background, world, depth - 1),
-                );
+                ) * rec.mat_ptr.scattering_pdf(&ray, &rec, &scattered)
+                    / pdf;
         }
         return rec.mat_ptr.emitted(rec.u, rec.v, &rec.pos);
     }
@@ -129,8 +150,23 @@ fn sphere() {
     let n_workers = 4;
     let pool = ThreadPool::new(n_workers);
 
-    let samples_per_pixel = 200;
+    let samples_per_pixel = 10;
     let max_depth = 50;
+
+    let mut lights = HittableList { objects: vec![] };
+    lights.add(Arc::new(XzRect {
+        x0: 213.0,
+        x1: 343.0,
+        z0: 227.0,
+        z1: 332.0,
+        k: 554.0,
+        mp: Arc::new(Lambertian::new(Vec3::zero())),
+    }));
+    lights.add(Arc::new(Sphere {
+        center: Vec3::new(190.0, 90.0, 190.0),
+        radius: 90.0,
+        mat_ptr: Arc::new(Lambertian::new(Vec3::zero())),
+    }));
 
     // let world = random_scene();
     // let world = simple_light();

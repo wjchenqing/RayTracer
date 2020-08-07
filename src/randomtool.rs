@@ -1,5 +1,6 @@
 use crate::vec3::Vec3;
 use rand::random;
+pub use std::f64::consts::PI;
 
 pub fn random_num() -> f64 {
     random::<f64>()
@@ -43,4 +44,14 @@ pub fn random_in_unit_disk() -> Vec3 {
         return random_in_unit_disk();
     }
     p
+}
+
+pub fn random_cosine_direction() -> Vec3 {
+    let r1: f64 = random::<f64>();
+    let r2: f64 = random::<f64>();
+    let z = (1.0 - r2).sqrt();
+    let phi: f64 = 2.0 * PI * r1;
+    let x = phi.cos() * r2.sqrt();
+    let y = phi.sin() * r2.sqrt();
+    Vec3 { x, y, z }
 }
