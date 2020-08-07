@@ -46,23 +46,23 @@ fn ray_color(ray: &Ray, background: &Vec3, world: &dyn Hittable, depth: i32) -> 
             let distance_squared = to_light.squared_length();
             let to_light = to_light.unit();
             if to_light * rec.nor < 0.0 {
-                return rec.mat_ptr.emitted(rec.u, rec.v, &rec.pos);
+                return rec.mat_ptr.emitted(&ray, &rec, rec.u, rec.v, &rec.pos);
             }
             let light_area = (343.0 - 213.0) * (332.0 - 227.0);
             let light_cosine = to_light.y.abs();
             if light_cosine < 0.000001 {
-                return rec.mat_ptr.emitted(rec.u, rec.v, &rec.pos);
+                return rec.mat_ptr.emitted(&ray, &rec, rec.u, rec.v, &rec.pos);
             }
             let pdf = distance_squared / (light_area * light_cosine);
             let scattered = Ray::new(rec.pos, to_light);
-            return rec.mat_ptr.emitted(rec.u, rec.v, &rec.pos)
+            return rec.mat_ptr.emitted(&ray, &rec, rec.u, rec.v, &rec.pos)
                 + vec3::Vec3::elemul(
                     attenuation,
                     ray_color(&scattered, background, world, depth - 1),
                 ) * rec.mat_ptr.scattering_pdf(&ray, &rec, &scattered)
                     / pdf;
         }
-        return rec.mat_ptr.emitted(rec.u, rec.v, &rec.pos);
+        return rec.mat_ptr.emitted(&ray, &rec, rec.u, rec.v, &rec.pos);
     }
     // let unit_dir = (ray.dir).unit();
     // let t = 0.5 * (unit_dir.y + 1.0);

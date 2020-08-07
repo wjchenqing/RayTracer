@@ -12,7 +12,7 @@ pub use std::sync::Arc;
 
 pub trait Material: Sync + Send {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray, f64)>;
-    fn emitted(&self, u: f64, v: f64, p: &Vec3) -> Vec3;
+    fn emitted(&self, r_in: &Ray, rec: &HitRecord, u: f64, v: f64, p: &Vec3) -> Vec3;
     fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> f64 {
         0.0
     }
@@ -40,12 +40,8 @@ impl Material for Lambertian {
             0.0
         }
     }
-    fn emitted(&self, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
-        Vec3 {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-        }
+    fn emitted(&self, _r_in: &Ray, rec: &HitRecord, u: f64, v: f64, p: &Vec3) -> Vec3 {
+        Vec3::zero()
     }
 }
 impl Lambertian {
@@ -118,7 +114,7 @@ impl Material for Dielectric {
             }
         }
     }
-    fn emitted(&self, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
+    fn emitted(&self, _r_in: &Ray, _rec: &HitRecord, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
         Vec3 {
             x: 0.0,
             y: 0.0,
@@ -148,7 +144,7 @@ impl Material for Metal {
         }
         None
     }
-    fn emitted(&self, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
+    fn emitted(&self, _r_in: &Ray, _rec: &HitRecord, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
         Vec3 {
             x: 0.0,
             y: 0.0,
@@ -182,7 +178,11 @@ impl Material for DiffuseLight {
         // }
         None
     }
-    fn emitted(&self, u: f64, v: f64, p: &Vec3) -> Vec3 {
-        self.emit.value(u, v, p)
+    fn emitted(&self, _r_in: &Ray, rec: &HitRecord, u: f64, v: f64, p: &Vec3) -> Vec3 {
+        if rec.front_face {
+            self.emit.value(u, v, p)
+        } else {
+            Vec3::zero()
+        }
     }
 }

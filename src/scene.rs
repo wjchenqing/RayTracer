@@ -28,14 +28,24 @@ pub fn cornell_box() -> HittableList {
         k: 0.0,
         mp: red,
     }));
-    objects.add(Arc::new(XzRect {
-        x0: 213.0,
-        x1: 343.0,
-        z0: 227.0,
-        z1: 332.0,
-        k: 554.0,
-        mp: light,
+    objects.add(Arc::new(FlipFace {
+        ptr: Arc::new(XzRect {
+            x0: 213.0,
+            x1: 343.0,
+            z0: 227.0,
+            z1: 332.0,
+            k: 554.0,
+            mp: light,
+        }),
     }));
+    // objects.add(Arc::new(XzRect {
+    //     x0: 213.0,
+    //     x1: 343.0,
+    //     z0: 227.0,
+    //     z1: 332.0,
+    //     k: 554.0,
+    //     mp: light,
+    // }));
     // objects.add(Arc::new(Sphere {
     //     center: Vec3::new(278.0, 554.0, 280.0),
     //     radius: 65.0,
