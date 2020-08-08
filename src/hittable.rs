@@ -15,6 +15,12 @@ pub struct HitRecord {
 pub trait Hittable: Sync + Send {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
     fn bounding_box(&self, t0: f64, t1: f64) -> Option<AABB>;
+    fn pdf_value(&self, _o: &Vec3, _v: &Vec3) -> f64 {
+        0.0
+    }
+    fn random(&self, _o: &Vec3) -> Vec3 {
+        Vec3::new(1.0, 0.0, 0.0)
+    }
 }
 #[derive(Clone)]
 pub struct HittableList {
@@ -249,6 +255,24 @@ impl Hittable for XzRect {
             &Vec3::new(self.x0, self.k - 0.0001, self.z0),
             &Vec3::new(self.x1, self.k + 0.0001, self.z1),
         ))
+    }
+    fn pdf_value(&self, o: &Vec3, v: &Vec3) -> f64 {
+        if let Some(rec) = self.hit(&Ray::new(*o, *v), 0.001, f64::MAX) {
+            let area = (self.x1 - self.x0) * (self.z1 - self.z0);
+            let distance_squared = rec.t * rec.t * v.squared_length();
+            let cosine = (*v * rec.nor).abs() / v.length();
+            distance_squared / (cosine * area)
+        } else {
+            0.0
+        }
+    }
+    fn random(&self, o: &Vec3) -> Vec3 {
+        let random_point = Vec3::new(
+            self.x0 + (self.x1 - self.x0) * random::<f64>(),
+            self.k,
+            self.z0 + (self.z1 - self.z0) * random::<f64>(),
+        );
+        random_point - *o
     }
 }
 

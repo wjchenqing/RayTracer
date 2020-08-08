@@ -3,6 +3,7 @@ mod bvh;
 mod hittable;
 mod material;
 mod onb;
+mod pdf;
 mod randomtool;
 mod ray;
 mod scene;
@@ -23,6 +24,7 @@ pub use bvh::*;
 pub use hittable::*;
 pub use material::*;
 pub use onb::*;
+pub use pdf::*;
 pub use randomtool::*;
 pub use ray::Ray;
 pub use scene::*;
@@ -37,7 +39,7 @@ fn ray_color(ray: &Ray, background: &Vec3, world: &dyn Hittable, depth: i32) -> 
     if let Some(rec) = tmp {
         let tmp = rec.mat_ptr.scatter(ray, &rec);
         if let Some((attenuation, _scattered, _pdf)) = tmp {
-            let on_light = Vec3::new(
+            /*let on_light = Vec3::new(
                 213.0 + (343.0 - 213.0) * random::<f64>(),
                 554.0,
                 227.0 + (332.0 - 227.0) * random::<f64>(),
@@ -60,7 +62,29 @@ fn ray_color(ray: &Ray, background: &Vec3, world: &dyn Hittable, depth: i32) -> 
                     attenuation,
                     ray_color(&scattered, background, world, depth - 1),
                 ) * rec.mat_ptr.scattering_pdf(&ray, &rec, &scattered)
-                    / pdf;
+                    / pdf;*/
+            let light_shape = Arc::new(XzRect {
+                x0: 213.0,
+                x1: 343.0,
+                z0: 227.0,
+                z1: 332.0,
+                k: 554.0,
+                mp: Arc::new(Lambertian::new(Vec3::zero())),
+            });
+            let p1 = Arc::new(HittablePDF {
+                o: rec.pos,
+                ptr: light_shape,
+            });
+            let p2 = Arc::new(CosinePDF::new(&rec.nor));
+            let p = MixtruePDF { p1, p2 };
+            let scattered = Ray::new(rec.pos, p.generate());
+            let pdf_val = p.value(&scattered.dir);
+            return rec.mat_ptr.emitted(&ray, &rec, rec.u, rec.v, &rec.pos)
+                + vec3::Vec3::elemul(
+                    attenuation,
+                    ray_color(&scattered, background, world, depth - 1),
+                ) * rec.mat_ptr.scattering_pdf(&ray, &rec, &scattered)
+                    / pdf_val;
         }
         return rec.mat_ptr.emitted(&ray, &rec, rec.u, rec.v, &rec.pos);
     }
