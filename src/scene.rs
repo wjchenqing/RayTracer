@@ -73,14 +73,15 @@ pub fn cornell_box() -> HittableList {
         y0: 0.0,
         y1: 555.0,
         k: 555.0,
-        mp: white,
+        mp: white.clone(),
     }));
     objects.add(Arc::new(Translate::new(
         &Arc::new(RotateY::new(
             &Arc::new(Box::new(
                 &Vec3::new(0.0, 0.0, 0.0),
                 &Vec3::new(165.0, 330.0, 165.0),
-                Arc::new(Metal::new(Vec3::new(0.8, 0.85, 0.85), 0.0)),
+                // Arc::new(Metal::new(Vec3::new(0.8, 0.85, 0.85), 0.0)),
+                white,
             )),
             15.0,
         )),
