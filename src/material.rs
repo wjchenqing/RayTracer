@@ -64,7 +64,6 @@ impl Lambertian {
 fn reflect(v: Vec3, n: Vec3) -> Vec3 {
     v - n * (v * n) * 2.0
 }
-/*
 fn refract(uv: &Vec3, n: &Vec3, etai_over_etat: f64) -> Vec3 {
     let cos_theta = -*uv * *n;
     let r_out_perp: Vec3 = (*uv + *n * cos_theta) * etai_over_etat;
@@ -102,23 +101,27 @@ impl Material for Dielectric {
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
         if (etai_over_etat * sin_theta) > 1.0 {
             let reflected = reflect(unit_dir, rec.nor);
-            Some((
+            Some(ScatterRecord {
                 attenuation,
-                Ray::new(rec.pos, reflected + random_unit() * 0.25),
-                0.0,
-            ))
+                specular_ray: Some(Ray::new(rec.pos, reflected + random_unit() * 0.25)),
+                pdf_ptr: Arc::new(NonePDF { val: 0.0 }),
+            })
         } else {
             let reflect_prob = schlick(cos_theta, etai_over_etat);
             if random::<f64>() < reflect_prob {
                 let reflected = reflect(unit_dir, rec.nor);
-                Some((
+                Some(ScatterRecord {
                     attenuation,
-                    Ray::new(rec.pos, reflected + random_unit() * 0.15),
-                    0.0,
-                ))
+                    specular_ray: Some(Ray::new(rec.pos, reflected + random_unit() * 0.15)),
+                    pdf_ptr: Arc::new(NonePDF { val: 0.0 }),
+                })
             } else {
                 let refracted = refract(&unit_dir, &rec.nor, etai_over_etat);
-                Some((attenuation, Ray::new(rec.pos, refracted), 0.0))
+                Some(ScatterRecord {
+                    attenuation,
+                    specular_ray: Some(Ray::new(rec.pos, refracted)),
+                    pdf_ptr: Arc::new(NonePDF { val: 0.0 }),
+                })
             }
         }
     }
@@ -130,7 +133,6 @@ impl Material for Dielectric {
         }
     }
 }
-*/
 pub struct Metal {
     pub albedo: Vec3,
     pub fuzz: f64,
@@ -147,15 +149,15 @@ impl Material for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let reflected = reflect(r_in.dir.unit(), rec.nor);
         let scattered = Ray::new(rec.pos, reflected + random_unit() * self.fuzz);
-        // if reflected * rec.nor > 0.0 {
-        Some(ScatterRecord {
-            specular_ray: Some(scattered),
-            attenuation: self.albedo,
-            pdf_ptr: Arc::new(NonePDF { val: 0.0 }),
-        })
-        // } else {
-        // None
-        // }
+        if reflected * rec.nor > 0.0 {
+            Some(ScatterRecord {
+                specular_ray: Some(scattered),
+                attenuation: self.albedo,
+                pdf_ptr: Arc::new(NonePDF { val: 0.0 }),
+            })
+        } else {
+            None
+        }
     }
     fn emitted(&self, _r_in: &Ray, _rec: &HitRecord, _u: f64, _v: f64, _p: &Vec3) -> Vec3 {
         Vec3 {

@@ -79,10 +79,10 @@ pub struct MixtruePDF {
 }
 impl PDF for MixtruePDF {
     fn value(&self, dir: &Vec3) -> f64 {
-        0.5 * self.p1.value(dir) + 0.5 * self.p2.value(dir)
+        1.0 * self.p1.value(dir) + 0.0 * self.p2.value(dir)
     }
     fn generate(&self) -> Vec3 {
-        if random::<f64>() < 0.5 {
+        if random::<f64>() < 1.5 {
             self.p1.generate()
         } else {
             self.p2.generate()

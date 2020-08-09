@@ -201,7 +201,7 @@ fn sphere() {
     let n_workers = 4;
     let pool = ThreadPool::new(n_workers);
 
-    let samples_per_pixel = 10;
+    let samples_per_pixel = 1000;
     let max_depth = 50;
 
     let mut lights = HittableList { objects: vec![] };

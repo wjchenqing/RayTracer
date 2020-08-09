@@ -73,7 +73,7 @@ pub fn cornell_box() -> HittableList {
         y0: 0.0,
         y1: 555.0,
         k: 555.0,
-        mp: white.clone(),
+        mp: white,
     }));
     objects.add(Arc::new(Translate::new(
         &Arc::new(RotateY::new(
@@ -86,7 +86,7 @@ pub fn cornell_box() -> HittableList {
         )),
         &Vec3::new(265.0, 0.0, 295.0),
     )));
-    objects.add(Arc::new(Translate::new(
+    /*objects.add(Arc::new(Translate::new(
         &Arc::new(RotateY::new(
             &Arc::new(Box::new(
                 &Vec3::new(0.0, 0.0, 0.0),
@@ -96,7 +96,12 @@ pub fn cornell_box() -> HittableList {
             -18.0,
         )),
         &Vec3::new(130.0, 0.0, 65.0),
-    )));
+    )));*/
+    objects.add(Arc::new(Sphere {
+        center: Vec3::new(190.0, 90.0, 190.0),
+        radius: 90.0,
+        mat_ptr: Arc::new(Dielectric::new(1.5)),
+    }));
     objects
 }
 /*pub fn random_scene() -> HittableList {
