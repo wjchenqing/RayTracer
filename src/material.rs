@@ -103,7 +103,7 @@ impl Material for Dielectric {
             let reflected = reflect(unit_dir, rec.nor);
             Some(ScatterRecord {
                 attenuation,
-                specular_ray: Some(Ray::new(rec.pos, reflected + random_unit() * 0.25)),
+                specular_ray: Some(Ray::new(rec.pos, reflected)),
                 pdf_ptr: Arc::new(NonePDF { val: 0.0 }),
             })
         } else {
@@ -112,7 +112,7 @@ impl Material for Dielectric {
                 let reflected = reflect(unit_dir, rec.nor);
                 Some(ScatterRecord {
                     attenuation,
-                    specular_ray: Some(Ray::new(rec.pos, reflected + random_unit() * 0.15)),
+                    specular_ray: Some(Ray::new(rec.pos, reflected)),
                     pdf_ptr: Arc::new(NonePDF { val: 0.0 }),
                 })
             } else {
