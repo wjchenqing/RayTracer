@@ -1,4 +1,5 @@
 #![allow(clippy::float_cmp)]
+#![allow(clippy::eq_op)]
 mod bvh;
 mod hittable;
 mod material;
@@ -31,14 +32,20 @@ pub use scene::*;
 pub use texture::*;
 pub use vec3::Vec3;
 
-fn ray_color(ray: &Ray, background: &Vec3, world: &dyn Hittable, depth: i32) -> Vec3 {
+fn ray_color(
+    ray: &Ray,
+    background: &Vec3,
+    world: &dyn Hittable,
+    lights: Arc<dyn Hittable>,
+    depth: i32,
+) -> Vec3 {
     if depth <= 0 {
         return Vec3::new(0.0, 0.0, 0.0);
     }
     let tmp = world.hit(ray, 0.001, f64::MAX);
     if let Some(rec) = tmp {
         let tmp = rec.mat_ptr.scatter(ray, &rec);
-        if let Some((attenuation, _scattered, _pdf)) = tmp {
+        if let Some(s_rec) = tmp {
             /*let on_light = Vec3::new(
                 213.0 + (343.0 - 213.0) * random::<f64>(),
                 554.0,
@@ -63,26 +70,46 @@ fn ray_color(ray: &Ray, background: &Vec3, world: &dyn Hittable, depth: i32) -> 
                     ray_color(&scattered, background, world, depth - 1),
                 ) * rec.mat_ptr.scattering_pdf(&ray, &rec, &scattered)
                     / pdf;*/
-            let light_shape = Arc::new(XzRect {
-                x0: 213.0,
-                x1: 343.0,
-                z0: 227.0,
-                z1: 332.0,
-                k: 554.0,
-                mp: Arc::new(Lambertian::new(Vec3::zero())),
-            });
-            let p1 = Arc::new(HittablePDF {
+
+            // let light_shape = Arc::new(XzRect {
+            //     x0: 213.0,
+            //     x1: 343.0,
+            //     z0: 227.0,
+            //     z1: 332.0,
+            //     k: 554.0,
+            //     mp: Arc::new(Lambertian::new(Vec3::zero())),
+            // });
+            // let p1 = Arc::new(HittablePDF {
+            //     o: rec.pos,
+            //     ptr: light_shape,
+            // });
+            // let p2 = Arc::new(CosinePDF::new(&rec.nor));
+            // let p = MixtruePDF { p1, p2 };
+
+            // let p = CosinePDF::new(&rec.nor);
+
+            if let Some(s_ray) = s_rec.specular_ray {
+                return vec3::Vec3::elemul(
+                    s_rec.attenuation,
+                    ray_color(&s_ray, background, world, lights, depth - 1),
+                );
+            }
+
+            let light_ptr = Arc::new(HittablePDF {
                 o: rec.pos,
-                ptr: light_shape,
+                ptr: lights.clone(),
             });
-            let p2 = Arc::new(CosinePDF::new(&rec.nor));
-            let p = MixtruePDF { p1, p2 };
+            let p = MixtruePDF {
+                p1: light_ptr,
+                p2: s_rec.pdf_ptr,
+            };
+
             let scattered = Ray::new(rec.pos, p.generate());
             let pdf_val = p.value(&scattered.dir);
             return rec.mat_ptr.emitted(&ray, &rec, rec.u, rec.v, &rec.pos)
                 + vec3::Vec3::elemul(
-                    attenuation,
-                    ray_color(&scattered, background, world, depth - 1),
+                    s_rec.attenuation,
+                    ray_color(&scattered, background, world, lights, depth - 1),
                 ) * rec.mat_ptr.scattering_pdf(&ray, &rec, &scattered)
                     / pdf_val;
         }
@@ -191,6 +218,7 @@ fn sphere() {
         radius: 90.0,
         mat_ptr: Arc::new(Lambertian::new(Vec3::zero())),
     }));
+    let lights = Arc::new(lights);
 
     // let world = random_scene();
     // let world = simple_light();
@@ -217,6 +245,7 @@ fn sphere() {
     for i in 0..n_jobs {
         let tx = tx.clone();
         let world = world.clone();
+        let lights_ptr = lights.clone();
         pool.execute(move || {
             let row_begin = i_h as usize * i / n_jobs;
             let row_end = i_h as usize * (i + 1) / n_jobs;
@@ -230,15 +259,25 @@ fn sphere() {
                         let u = (x as f64 + random_num()) / ((i_w - 1) as f64);
                         let v = ((i_h - y) as f64 - random_num()) / ((i_h - 1) as f64);
                         let r = camera.get_ray(u, v);
-                        color += ray_color(&r, &background, &world, max_depth);
+                        color += ray_color(&r, &background, &world, lights_ptr.clone(), max_depth);
                     }
-                    color = color / (samples_per_pixel as f64);
+                    let mut r = color.x;
+                    let mut g = color.y;
+                    let mut b = color.z;
+                    if r != r {
+                        r = 0.0;
+                    }
+                    if g != g {
+                        g = 0.0;
+                    }
+                    if b != b {
+                        b = 0.0;
+                    }
+                    let r = (r / samples_per_pixel as f64).sqrt();
+                    let g = (g / samples_per_pixel as f64).sqrt();
+                    let b = (b / samples_per_pixel as f64).sqrt();
                     let pixel = img.get_pixel_mut(x, img_y as u32);
-                    *pixel = image::Rgb([
-                        (color.x.sqrt() * 255.0) as u8,
-                        (color.y.sqrt() * 255.0) as u8,
-                        (color.z.sqrt() * 255.0) as u8,
-                    ]);
+                    *pixel = image::Rgb([(r * 255.0) as u8, (g * 255.0) as u8, (b * 255.0) as u8]);
                 }
             }
             tx.send((row_begin..row_end, img))

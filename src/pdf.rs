@@ -9,9 +9,31 @@ pub use std::f64::consts::PI;
 pub use std::f64::INFINITY;
 pub use std::sync::Arc;
 
+pub fn random_to_sphere(radius: f64, distance_squared: f64) -> Vec3 {
+    let r1 = random::<f64>();
+    let r2 = random::<f64>();
+    let z = 1.0 + r2 * ((1.0 - radius * radius / distance_squared).sqrt() - 1.0);
+    let phi = 2.0 * PI * r1;
+    let x = phi.cos() * (1.0 - z * z).sqrt();
+    let y = phi.sin() * (1.0 - z * z).sqrt();
+    Vec3 { x, y, z }
+}
+
 pub trait PDF: Sync + Send {
     fn value(&self, dir: &Vec3) -> f64;
     fn generate(&self) -> Vec3;
+}
+
+pub struct NonePDF {
+    pub val: f64,
+}
+impl PDF for NonePDF {
+    fn value(&self, _dir: &Vec3) -> f64 {
+        0.0
+    }
+    fn generate(&self) -> Vec3 {
+        Vec3::zero()
+    }
 }
 
 pub struct CosinePDF {
@@ -60,7 +82,7 @@ impl PDF for MixtruePDF {
         0.5 * self.p1.value(dir) + 0.5 * self.p2.value(dir)
     }
     fn generate(&self) -> Vec3 {
-        if random::<f64>() < 0.8 {
+        if random::<f64>() < 0.5 {
             self.p1.generate()
         } else {
             self.p2.generate()

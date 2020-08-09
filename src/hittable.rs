@@ -1,5 +1,6 @@
 pub use crate::bvh::*;
 pub use crate::material::*;
+pub use crate::pdf::*;
 pub use crate::vec3::*;
 
 #[derive(Clone)]
@@ -63,6 +64,17 @@ impl Hittable for HittableList {
             }
         }
         Some(output_box)
+    }
+    fn pdf_value(&self, o: &Vec3, v: &Vec3) -> f64 {
+        let weight = 1.0 / self.objects.len() as f64;
+        let mut sum = 0.0;
+        for object in self.objects.iter() {
+            sum += weight * object.pdf_value(o, v);
+        }
+        sum
+    }
+    fn random(&self, o: &Vec3) -> Vec3 {
+        self.objects[rand::random::<usize>() % self.objects.len()].random(o)
     }
 }
 pub fn surrounding_box(box0: AABB, box1: AABB) -> AABB {
@@ -148,6 +160,22 @@ impl Hittable for Sphere {
             &(self.center - Vec3::new(self.radius, self.radius, self.radius)),
             &(self.center + Vec3::new(self.radius, self.radius, self.radius)),
         ))
+    }
+    fn pdf_value(&self, o: &Vec3, v: &Vec3) -> f64 {
+        if let Some(_rec) = self.hit(&Ray::new(*o, *v), 0.001, f64::MAX) {
+            let cos_theta_max =
+                (1.0 - self.radius * self.radius / (self.center - *o).squared_length()).sqrt();
+            let solid_angle = 2.0 * PI * (1.0 - cos_theta_max);
+            1.0 / solid_angle
+        } else {
+            0.0
+        }
+    }
+    fn random(&self, o: &Vec3) -> Vec3 {
+        let dir = self.center - *o;
+        let distance_squared = dir.squared_length();
+        let uvw = ONB::build_from_w(&dir);
+        uvw.local_vec(&random_to_sphere(self.radius, distance_squared))
     }
 }
 pub struct XyRect {
@@ -336,7 +364,7 @@ pub struct Box {
     pub sides: HittableList,
 }
 impl Box {
-    pub fn new(p0: &Vec3, p1: &Vec3, ptr: &Arc<Lambertian>) -> Self {
+    pub fn new(p0: &Vec3, p1: &Vec3, ptr: Arc<dyn Material>) -> Self {
         let box_min = *p0;
         let box_max = *p1;
         let mut sides = HittableList { objects: vec![] };
