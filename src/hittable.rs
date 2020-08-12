@@ -66,6 +66,9 @@ impl Hittable for HittableList {
         Some(output_box)
     }
     fn pdf_value(&self, o: &Vec3, v: &Vec3) -> f64 {
+        if self.objects.is_empty() {
+            return 0.0;
+        }
         let weight = 1.0 / self.objects.len() as f64;
         let mut sum = 0.0;
         for object in self.objects.iter() {
@@ -74,7 +77,11 @@ impl Hittable for HittableList {
         sum
     }
     fn random(&self, o: &Vec3) -> Vec3 {
-        self.objects[rand::random::<usize>() % self.objects.len()].random(o)
+        if self.objects.is_empty() {
+            Vec3::new(1.0, 0.0, 0.0)
+        } else {
+            self.objects[rand::random::<usize>() % self.objects.len()].random(o)
+        }
     }
 }
 pub fn surrounding_box(box0: AABB, box1: AABB) -> AABB {
@@ -476,14 +483,14 @@ impl Hittable for Translate {
 }
 
 pub struct RotateY {
-    pub ptr: Arc<Box>,
+    pub ptr: Arc<dyn Hittable>,
     pub sin_theta: f64,
     pub cos_theta: f64,
     pub has_box: bool,
     pub bbox: AABB,
 }
 impl RotateY {
-    pub fn new(ptr: &Arc<Box>, angle: f64) -> Self {
+    pub fn new(ptr: Arc<dyn Hittable>, angle: f64) -> Self {
         let radians = angle / 180.0 * PI;
         let sin_theta = radians.sin();
         let cos_theta = radians.cos();
@@ -575,5 +582,55 @@ impl Hittable for FlipFace {
     }
     fn bounding_box(&self, t0: f64, t1: f64) -> Option<AABB> {
         self.ptr.bounding_box(t0, t1)
+    }
+}
+
+pub struct ConstantMedium {
+    pub boundary: Arc<dyn Hittable>,
+    pub phase_function: Arc<dyn Material>,
+    pub neg_inv_density: f64,
+}
+impl Hittable for ConstantMedium {
+    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        if let Some(mut rec1) = self.boundary.hit(ray, -f64::MAX, f64::MAX) {
+            if let Some(mut rec2) = self.boundary.hit(ray, rec1.t + 0.0001, f64::MAX) {
+                if rec1.t < t_min {
+                    rec1.t = t_min;
+                }
+                if rec2.t > t_max {
+                    rec2.t = t_max;
+                }
+                if rec1.t >= rec2.t {
+                    None
+                } else {
+                    if rec1.t < 0.0 {
+                        rec1.t = 0.0
+                    }
+                    let ray_length = ray.dir.length();
+                    let distance_inside_boundary = (rec2.t - rec1.t) * ray_length;
+                    let hit_distance = self.neg_inv_density * random::<f64>().ln();
+                    if hit_distance > distance_inside_boundary {
+                        None
+                    } else {
+                        Some(HitRecord {
+                            t: rec1.t + hit_distance / ray_length,
+                            pos: ray.at(rec1.t + hit_distance / ray_length),
+                            nor: Vec3::new(1.0, 0.0, 0.0),
+                            front_face: true,
+                            mat_ptr: self.phase_function.clone(),
+                            u: 0.0,
+                            v: 0.0,
+                        })
+                    }
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+    fn bounding_box(&self, t0: f64, t1: f64) -> Option<AABB> {
+        self.boundary.bounding_box(t0, t1)
     }
 }

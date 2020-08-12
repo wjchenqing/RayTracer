@@ -5,6 +5,7 @@ mod hittable;
 mod material;
 mod onb;
 mod pdf;
+mod perlin;
 mod randomtool;
 mod ray;
 mod scene;
@@ -26,6 +27,7 @@ pub use hittable::*;
 pub use material::*;
 pub use onb::*;
 pub use pdf::*;
+pub use perlin::*;
 pub use randomtool::*;
 pub use ray::Ray;
 pub use scene::*;
@@ -72,10 +74,10 @@ fn ray_color(
                     / pdf;*/
 
             // let light_shape = Arc::new(XzRect {
-            //     x0: 213.0,
-            //     x1: 343.0,
-            //     z0: 227.0,
-            //     z1: 332.0,
+            //     x0: 123.0,
+            //     x1: 423.0,
+            //     z0: 147.0,
+            //     z1: 412.0,
             //     k: 554.0,
             //     mp: Arc::new(Lambertian::new(Vec3::zero())),
             // });
@@ -101,6 +103,7 @@ fn ray_color(
             });
             let p = MixtruePDF {
                 p1: light_ptr,
+                // p1,
                 p2: s_rec.pdf_ptr,
             };
 
@@ -197,32 +200,47 @@ fn sphere() {
     let i_h = 600;
     let i_w = 600;
     let (tx, rx) = channel();
-    let n_jobs: usize = 32;
-    let n_workers = 4;
+    let n_jobs: usize = 16;
+    let n_workers = 2;
     let pool = ThreadPool::new(n_workers);
 
-    let samples_per_pixel = 1000;
+    let samples_per_pixel = 10000;
     let max_depth = 50;
 
     let mut lights = HittableList { objects: vec![] };
+    // lights.add(Arc::new(XzRect {
+    //     x0: 213.0,
+    //     x1: 343.0,
+    //     z0: 227.0,
+    //     z1: 332.0,
+    //     k: 554.0,
+    //     mp: Arc::new(Lambertian::new(Vec3::zero())),
+    // }));
+    // lights.add(Arc::new(Sphere {
+    //     center: Vec3::new(190.0, 90.0, 190.0),
+    //     radius: 90.0,
+    //     mat_ptr: Arc::new(Lambertian::new(Vec3::zero())),
+    // }));
     lights.add(Arc::new(XzRect {
-        x0: 213.0,
-        x1: 343.0,
-        z0: 227.0,
-        z1: 332.0,
+        x0: 123.0,
+        x1: 423.0,
+        z0: 147.0,
+        z1: 412.0,
         k: 554.0,
         mp: Arc::new(Lambertian::new(Vec3::zero())),
     }));
     lights.add(Arc::new(Sphere {
-        center: Vec3::new(190.0, 90.0, 190.0),
-        radius: 90.0,
+        center: Vec3::new(260.0, 150.0, 45.0),
+        radius: 50.0,
         mat_ptr: Arc::new(Lambertian::new(Vec3::zero())),
     }));
     let lights = Arc::new(lights);
 
     // let world = random_scene();
     // let world = simple_light();
-    let world = cornell_box();
+    // let world = cornell_box();
+    // let world = two_perlin_sphere();
+    let world = final_scene();
 
     let background = Vec3::new(0.0, 0.0, 0.0);
     let camera = Camera::new(
@@ -230,7 +248,15 @@ fn sphere() {
         // &Vec3::new(-7.8, -1.6, 0.9),
         // &Vec3::new(0.0, 1.0, 0.0),
         // 25.0,
-        &Vec3::new(278.0, 278.0, -800.0),
+        // &Vec3::new(278.0, 278.0, -800.0),
+        // &Vec3::new(278.0, 278.0, 0.0),
+        // &Vec3::new(0.0, 1.0, 0.0),
+        // 40.0,
+        // &Vec3::new(13.0, 2.0, 3.0),
+        // &Vec3::new(0.0, 0.0, 0.0),
+        // &Vec3::new(0.0, 1.0, 0.0),
+        // 20.0,
+        &Vec3::new(478.0, 278.0, -600.0),
         &Vec3::new(278.0, 278.0, 0.0),
         &Vec3::new(0.0, 1.0, 0.0),
         40.0,

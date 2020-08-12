@@ -66,6 +66,10 @@ impl BvhNode {
         }
         panic!();
     }
+    pub fn new_from_list(list: &mut HittableList, time0: f64, time1: f64) -> Self {
+        let len = list.objects.len();
+        Self::new(&mut list.objects, 0, len, time0, time1)
+    }
     pub fn new(
         objects: &mut Vec<Arc<dyn Hittable>>,
         start: usize,
@@ -76,21 +80,29 @@ impl BvhNode {
         let left;
         let right;
         let _box;
-        let axis = rand::thread_rng().gen_range(0, 2);
-        match axis {
-            0 => objects[start..end].sort_by(|a, b| Self::box_x_compare(a, b)),
-            1 => objects[start..end].sort_by(|a, b| Self::box_y_compare(a, b)),
-            _ => objects[start..end].sort_by(|a, b| Self::box_z_compare(a, b)),
+        let axis = rand::thread_rng().gen_range(0, 3);
+        let comparator = match axis {
+            0 => Self::box_x_compare,
+            1 => Self::box_y_compare,
+            _ => Self::box_z_compare,
         };
         let len = end - start;
         if len == 1 {
             left = objects[start].clone();
             right = objects[start].clone();
         } else if len == 2 {
-            left = objects[start].clone();
-            right = objects[end].clone();
+            if comparator(&objects[start], &objects[start + 1]) == Ordering::Less {
+                right = objects[start + 1].clone();
+                left = objects[start].clone();
+            } else {
+                left = objects[start + 1].clone();
+                right = objects[start].clone();
+            }
         } else {
-            let mid = start + len / 2;
+            let obj = &mut objects[start..end];
+            obj.sort_by(|a, b| comparator(a, b));
+
+            let mid = (start + end) / 2;
             left = Arc::new(BvhNode::new(objects, start, mid, time0, time1));
             right = Arc::new(BvhNode::new(objects, mid, end, time0, time1));
         }
@@ -100,7 +112,7 @@ impl BvhNode {
                 return Self { left, right, _box };
             }
         }
-        panic!();
+        panic!("aaaaaaaaaaaaaaaaaa");
     }
 }
 

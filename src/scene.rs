@@ -6,6 +6,137 @@ pub use crate::ray::Ray;
 pub use crate::texture::*;
 pub use crate::vec3::Vec3;
 
+pub fn final_scene() -> HittableList {
+    let mut objects = HittableList { objects: vec![] };
+
+    let mut box1 = HittableList { objects: vec![] };
+    let ground = Arc::new(Lambertian::new(Vec3::new(0.48, 0.83, 0.53)));
+    let box_per_side = 19;
+    for i in 0..box_per_side {
+        for j in 0..box_per_side {
+            let w = 100.0;
+            let x0 = -1000.0 + i as f64 * w;
+            let z0 = -1000.0 + j as f64 * w;
+            let y0 = 0.0;
+            let x1 = x0 + w;
+            let y1 = 1.0 + random::<f64>() * 100.0;
+            let z1 = z0 + w;
+            box1.add(Arc::new(Box::new(
+                &Vec3::new(x0, y0, z0),
+                &Vec3::new(x1, y1, z1),
+                ground.clone(),
+            )));
+        }
+    }
+    objects.add(Arc::new(BvhNode::new_from_list(&mut box1, 0.0, 1.0)));
+
+    let light = Arc::new(DiffuseLight::new_from_color(&Vec3::new(7.0, 7.0, 7.0)));
+    objects.add(Arc::new(XzRect {
+        x0: 123.0,
+        x1: 423.0,
+        z0: 147.0,
+        z1: 412.0,
+        k: 554.0,
+        mp: light,
+    }));
+
+    objects.add(Arc::new(Sphere {
+        center: Vec3::new(260.0, 150.0, 45.0),
+        radius: 50.0,
+        mat_ptr: Arc::new(Dielectric::new(1.5)),
+    }));
+    objects.add(Arc::new(Sphere {
+        center: Vec3::new(0.0, 150.0, 145.0),
+        radius: 50.0,
+        mat_ptr: Arc::new(Metal::new(Vec3::new(0.8, 0.8, 0.9), 10.0)),
+    }));
+
+    let boundary = Arc::new(Sphere {
+        center: Vec3::new(360.0, 150.0, 145.0),
+        radius: 70.0,
+        mat_ptr: Arc::new(Dielectric::new(1.5)),
+    });
+    objects.add(boundary.clone());
+    objects.add(Arc::new(ConstantMedium {
+        boundary,
+        neg_inv_density: -1.0 / 0.2,
+        phase_function: Arc::new(Isotropic {
+            albedo: Arc::new(SolidColor::new(Vec3::new(0.2, 0.4, 0.9))),
+        }),
+    }));
+    let boundary = Arc::new(Sphere {
+        center: Vec3::new(0.0, 0.0, 0.0),
+        radius: 5000.0,
+        mat_ptr: Arc::new(Dielectric::new(1.5)),
+    });
+    objects.add(Arc::new(ConstantMedium {
+        boundary,
+        neg_inv_density: -1.0 / 0.0001,
+        phase_function: Arc::new(Isotropic {
+            albedo: Arc::new(SolidColor::new(Vec3::new(1.0, 1.0, 1.0))),
+        }),
+    }));
+
+    let emat = Arc::new(Lambertian {
+        albedo: Arc::new(ImageTexture::new("pikachu/timgD38FGAN2.jpg")),
+    });
+    objects.add(Arc::new(Sphere {
+        center: Vec3::new(400.0, 200.0, 400.0),
+        radius: 100.0,
+        mat_ptr: emat,
+    }));
+
+    let pertext = Arc::new(NoiseTexture::new_from_f64(0.1));
+    objects.add(Arc::new(Sphere {
+        center: Vec3::new(220.0, 280.0, 300.0),
+        radius: 80.0,
+        mat_ptr: Arc::new(Lambertian::new_from_arc(pertext)),
+    }));
+
+    let mut box2 = HittableList { objects: vec![] };
+    let white = Arc::new(Lambertian::new(Vec3::new(0.73, 0.73, 0.73)));
+    let ns = 1000;
+    for _i in 1..ns {
+        box2.add(Arc::new(Sphere {
+            center: Vec3::new(
+                random::<f64>() * 165.0,
+                random::<f64>() * 165.0,
+                random::<f64>() * 165.0,
+            ),
+            radius: 10.0,
+            mat_ptr: white.clone(),
+        }));
+    }
+    objects.add(Arc::new(Translate::new(
+        &Arc::new(RotateY::new(
+            Arc::new(BvhNode::new_from_list(&mut box2, 0.0, 1.0)),
+            15.0,
+        )),
+        &Vec3::new(-100.0, 270.0, 395.0),
+    )));
+
+    objects
+}
+
+// pub fn two_perlin_sphere() -> HittableList {
+//     let mut objects = HittableList { objects: vec![] };
+
+//     let pertext = Arc::new(NoiseTexture::new());
+//     objects.add(Arc::new(Sphere {
+//         center: Vec3::new(0.0, -1000.0, 0.0),
+//         radius: 1000.0,
+//         mat_ptr: Arc::new(Lambertian {
+//             albedo: pertext.clone(),
+//         }),
+//     }));
+//     objects.add(Arc::new(Sphere {
+//         center: Vec3::new(0.0, 2.0, 0.0),
+//         radius: 2.0,
+//         mat_ptr: Arc::new(Lambertian { albedo: pertext }),
+//     }));
+//     objects
+// }
+
 pub fn cornell_box() -> HittableList {
     let mut objects = HittableList { objects: vec![] };
     let red = Arc::new(Lambertian::new(Vec3::new(0.65, 0.05, 0.05)));
@@ -75,9 +206,9 @@ pub fn cornell_box() -> HittableList {
         k: 555.0,
         mp: white.clone(),
     }));
-    objects.add(Arc::new(Translate::new(
+    let box1 = Arc::new(Translate::new(
         &Arc::new(RotateY::new(
-            &Arc::new(Box::new(
+            Arc::new(Box::new(
                 &Vec3::new(0.0, 0.0, 0.0),
                 &Vec3::new(165.0, 330.0, 165.0),
                 // Arc::new(Metal::new(Vec3::new(0.8, 0.85, 0.85), 0.0)),
@@ -86,7 +217,15 @@ pub fn cornell_box() -> HittableList {
             15.0,
         )),
         &Vec3::new(265.0, 0.0, 295.0),
-    )));
+    ));
+    // objects.add(box1.clone());
+    objects.add(Arc::new(ConstantMedium {
+        boundary: box1,
+        neg_inv_density: -1.0 / 0.01,
+        phase_function: Arc::new(Isotropic {
+            albedo: Arc::new(SolidColor::new(Vec3::new(0.0, 0.0, 0.0))),
+        }),
+    }));
     /*objects.add(Arc::new(Translate::new(
         &Arc::new(RotateY::new(
             &Arc::new(Box::new(
