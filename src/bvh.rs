@@ -131,38 +131,46 @@ impl AABB {
     pub fn new(a: &Vec3, b: &Vec3) -> Self {
         Self { _min: *a, _max: *b }
     }
-    pub fn hit(&self, ray: &Ray, t_min: &mut f64, t_max: &mut f64) -> bool {
-        let mut t1 = (self._min.x - ray.ori.x) / ray.dir.x;
-        let mut t2 = (self._max.x - ray.ori.x) / ray.dir.x;
-        if t1 > t2 {
-            std::mem::swap(&mut t1, &mut t2)
+    pub fn hit(&self, ray: &Ray, tmin: &mut f64, tmax: &mut f64) -> bool {
+        let mut t_min = *tmin;
+        let mut t_max = *tmax;
+        let inv = 1.0 / ray.dir.x;
+        let mut t0 = (self._min.x - ray.ori.x) / ray.dir.x;
+        let mut t1 = (self._max.x - ray.ori.x) / ray.dir.x;
+        if inv < 0.0 {
+            std::mem::swap(&mut t0, &mut t1);
         }
-        // println!("{}, {}, {}, {}", t1, t_min, t2, t_max);
-        *t_min = if t1 > *t_min { t1 } else { *t_min };
-        *t_max = if t2 < *t_max { t2 } else { *t_max };
-        // if t_max.min(t2) <= t_min.max(t1) {
-        //     return false;
-        // }
-        let mut t1 = (self._min.y - ray.ori.y) / ray.dir.y;
-        let mut t2 = (self._max.y - ray.ori.y) / ray.dir.y;
-        if t1 > t2 {
-            std::mem::swap(&mut t1, &mut t2)
+        t_min = t0.max(t_min);
+        t_max = t1.min(t_max);
+        if t_max <= t_min {
+            return false;
         }
-        *t_min = if t1 > *t_min { t1 } else { *t_min };
-        *t_max = if t2 < *t_max { t2 } else { *t_max };
-        // if t_max.min(t2) <= t_min.max(t1) {
-        //     return false;
-        // }
-        let mut t1 = (self._min.z - ray.ori.z) / ray.dir.z;
-        let mut t2 = (self._max.z - ray.ori.z) / ray.dir.z;
-        if t1 > t2 {
-            std::mem::swap(&mut t1, &mut t2)
+        let inv = 1.0 / ray.dir.y;
+        let mut t0 =
+            (self._min.y - ray.ori.y) / ray.dir.y;
+        let mut t1 =
+            (self._max.y - ray.ori.y) / ray.dir.y;
+        if inv < 0.0 {
+            std::mem::swap(&mut t0, &mut t1);
         }
-        *t_min = if t1 > *t_min { t1 } else { *t_min };
-        *t_max = if t2 < *t_max { t2 } else { *t_max };
-        // if t_max.min(t2) <= t_min.max(t1) {
-        //     return false;
-        // }
+        t_min = t0.max(t_min);
+        t_max = t1.min(t_max);
+        if t_max <= t_min {
+            return false;
+        }
+        let inv = 1.0 / ray.dir.z;
+        let mut t0 =
+            (self._min.z - ray.ori.z) / ray.dir.z;
+        let mut t1 =
+            (self._max.z - ray.ori.z) / ray.dir.z;
+        if inv < 0.0 {
+            std::mem::swap(&mut t0, &mut t1);
+        }
+        t_min = t0.max(t_min);
+        t_max = t1.min(t_max);
+        if t_max <= t_min {
+            return false;
+        }
         true
     }
 }

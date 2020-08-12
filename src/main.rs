@@ -200,11 +200,11 @@ fn sphere() {
     let i_h = 600;
     let i_w = 600;
     let (tx, rx) = channel();
-    let n_jobs: usize = 32;
-    let n_workers = 4;
+    let n_jobs: usize = 64;
+    let n_workers = 8;
     let pool = ThreadPool::new(n_workers);
 
-    let samples_per_pixel = 500;
+    let samples_per_pixel = 50;
     let max_depth = 50;
 
     let mut lights = HittableList { objects: vec![] };
