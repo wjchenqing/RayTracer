@@ -28,7 +28,8 @@ pub fn final_scene() -> HittableList {
             )));
         }
     }
-    objects.add(Arc::new(BvhNode::new_from_list(&mut box1, 0.0, 1.0)));
+    // objects.add(Arc::new(BvhNode::new_from_list(&mut box1, 0.0, 1.0)));
+    objects.objects.append(&mut box1.objects);
 
     let light = Arc::new(DiffuseLight::new_from_color(&Vec3::new(7.0, 7.0, 7.0)));
     objects.add(Arc::new(XzRect {
@@ -107,13 +108,14 @@ pub fn final_scene() -> HittableList {
             mat_ptr: white.clone(),
         }));
     }
-    objects.add(Arc::new(Translate::new(
-        &Arc::new(RotateY::new(
-            Arc::new(BvhNode::new_from_list(&mut box2, 0.0, 1.0)),
-            15.0,
-        )),
-        &Vec3::new(-100.0, 270.0, 395.0),
-    )));
+    // objects.add(Arc::new(Translate::new(
+    //     &Arc::new(RotateY::new(
+    //         Arc::new(BvhNode::new_from_list(&mut box2, 0.0, 1.0)),
+    //         15.0,
+    //     )),
+    //     &Vec3::new(-100.0, 270.0, 395.0),
+    // )));
+    objects.objects.append(&mut box2.objects);
 
     objects
 }
