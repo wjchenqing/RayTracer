@@ -200,11 +200,11 @@ fn sphere() {
     let i_h = 600;
     let i_w = 600;
     let (tx, rx) = channel();
-    let n_jobs: usize = 16;
-    let n_workers = 2;
+    let n_jobs: usize = 32;
+    let n_workers = 4;
     let pool = ThreadPool::new(n_workers);
 
-    let samples_per_pixel = 10000;
+    let samples_per_pixel = 500;
     let max_depth = 50;
 
     let mut lights = HittableList { objects: vec![] };
@@ -229,11 +229,11 @@ fn sphere() {
         k: 554.0,
         mp: Arc::new(Lambertian::new(Vec3::zero())),
     }));
-    lights.add(Arc::new(Sphere {
-        center: Vec3::new(260.0, 150.0, 45.0),
-        radius: 50.0,
-        mat_ptr: Arc::new(Lambertian::new(Vec3::zero())),
-    }));
+    // lights.add(Arc::new(Sphere {
+    //     center: Vec3::new(260.0, 150.0, 45.0),
+    //     radius: 50.0,
+    //     mat_ptr: Arc::new(Lambertian::new(Vec3::zero())),
+    // }));
     let lights = Arc::new(lights);
 
     // let world = random_scene();

@@ -17,16 +17,22 @@ pub struct BvhNode {
 }
 impl Hittable for BvhNode {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        if self._box.hit(ray, &t_min, &t_max) == None {
+        let mut t_min = t_min;
+        let mut t_max = t_max;
+        if !self._box.hit(ray, &mut t_min, &mut t_max) {
+            // println!("a");
             return None;
         }
         if let Some(tmp1) = self.left.hit(ray, t_min, t_max) {
             if let Some(tmp2) = self.right.hit(ray, t_min, t_max) {
+                // println!("22222222222222");
                 return Some(tmp2);
             } else {
+                // println!("11111111111111");
                 return Some(tmp1);
             }
         } else if let Some(tmp2) = self.right.hit(ray, t_min, t_max) {
+            // println!("2222");
             return Some(tmp2);
         }
         None
@@ -80,7 +86,7 @@ impl BvhNode {
         let left;
         let right;
         let _box;
-        let axis = rand::thread_rng().gen_range(0, 3);
+        let axis = rand::random::<usize>() % 3;
         let comparator = match axis {
             0 => Self::box_x_compare,
             1 => Self::box_y_compare,
@@ -125,52 +131,38 @@ impl AABB {
     pub fn new(a: &Vec3, b: &Vec3) -> Self {
         Self { _min: *a, _max: *b }
     }
-    pub fn hit(&self, ray: &Ray, tmin: &f64, tmax: &f64) -> Option<(f64, f64)> {
-        let mut t_min = *tmin;
-        let mut t_max = *tmax;
-
-        let inv = 1.0 / ray.dir.x;
-        let mut t0 =
-            ((self._min.x - ray.ori.x) / ray.dir.x).min((self._max.x - ray.ori.x) / ray.dir.x);
-        let mut t1 =
-            ((self._min.x - ray.ori.x) / ray.dir.x).max((self._max.x - ray.ori.x) / ray.dir.x);
-        if inv < 0.0 {
-            std::mem::swap(&mut t0, &mut t1);
+    pub fn hit(&self, ray: &Ray, t_min: &mut f64, t_max: &mut f64) -> bool {
+        let mut t1 = (self._min.x - ray.ori.x) / ray.dir.x;
+        let mut t2 = (self._max.x - ray.ori.x) / ray.dir.x;
+        if t1 > t2 {
+            std::mem::swap(&mut t1, &mut t2)
         }
-        t_min = t0.max(t_min);
-        t_max = t1.min(t_max);
-        if t_max <= t_min {
-            return None;
+        // println!("{}, {}, {}, {}", t1, t_min, t2, t_max);
+        *t_min = if t1 > *t_min { t1 } else { *t_min };
+        *t_max = if t2 < *t_max { t2 } else { *t_max };
+        // if t_max.min(t2) <= t_min.max(t1) {
+        //     return false;
+        // }
+        let mut t1 = (self._min.y - ray.ori.y) / ray.dir.y;
+        let mut t2 = (self._max.y - ray.ori.y) / ray.dir.y;
+        if t1 > t2 {
+            std::mem::swap(&mut t1, &mut t2)
         }
-
-        let inv = 1.0 / ray.dir.y;
-        let mut t0 =
-            ((self._min.y - ray.ori.y) / ray.dir.y).min((self._max.y - ray.ori.y) / ray.dir.y);
-        let mut t1 =
-            ((self._min.y - ray.ori.y) / ray.dir.y).max((self._max.y - ray.ori.y) / ray.dir.y);
-        if inv < 0.0 {
-            std::mem::swap(&mut t0, &mut t1);
+        *t_min = if t1 > *t_min { t1 } else { *t_min };
+        *t_max = if t2 < *t_max { t2 } else { *t_max };
+        // if t_max.min(t2) <= t_min.max(t1) {
+        //     return false;
+        // }
+        let mut t1 = (self._min.z - ray.ori.z) / ray.dir.z;
+        let mut t2 = (self._max.z - ray.ori.z) / ray.dir.z;
+        if t1 > t2 {
+            std::mem::swap(&mut t1, &mut t2)
         }
-        t_min = t0.max(t_min);
-        t_max = t1.min(t_max);
-        if t_max <= t_min {
-            return None;
-        }
-
-        let inv = 1.0 / ray.dir.z;
-        let mut t0 =
-            ((self._min.z - ray.ori.z) / ray.dir.z).min((self._max.z - ray.ori.z) / ray.dir.z);
-        let mut t1 =
-            ((self._min.z - ray.ori.z) / ray.dir.z).max((self._max.z - ray.ori.z) / ray.dir.z);
-        if inv < 0.0 {
-            std::mem::swap(&mut t0, &mut t1);
-        }
-        t_min = t0.max(t_min);
-        t_max = t1.min(t_max);
-        if t_max <= t_min {
-            return None;
-        }
-
-        Some((t_min, t_max))
+        *t_min = if t1 > *t_min { t1 } else { *t_min };
+        *t_max = if t2 < *t_max { t2 } else { *t_max };
+        // if t_max.min(t2) <= t_min.max(t1) {
+        //     return false;
+        // }
+        true
     }
 }
