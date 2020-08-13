@@ -1,3 +1,4 @@
+#![allow(clippy::type_complexity)]
 pub use crate::bvh::*;
 pub use crate::material::*;
 pub use crate::pdf::*;
@@ -389,7 +390,7 @@ impl<T: Material + Clone> Box<T> {
                     z0: p0.z,
                     z1: p1.z,
                     k: p1.x,
-                    mp: material.clone(),
+                    mp: material,
                 },
             ),
         }
@@ -509,7 +510,7 @@ impl<T: Hittable + Clone> RotateY<T> {
             }
             let bbox = AABB::new(&_min, &_max);
             Self {
-                ptr: ptr,
+                ptr,
                 sin_theta,
                 cos_theta,
                 bbox,

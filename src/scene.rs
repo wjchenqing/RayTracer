@@ -88,7 +88,7 @@ pub fn final_scene() -> HittableList {
         center: Vec3::new(400.0, 200.0, 400.0),
         radius: 100.0,
         mat_ptr: Lambertian {
-            albedo: ImageTexture::new("pikachu/timgD38FGAN2.jpg"),
+            albedo: ImageTexture::new("pikachu/earthmap.jpg"),
         },
     }));
 

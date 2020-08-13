@@ -4,7 +4,7 @@ use rand::*;
 
 pub const POINT_COUNT: usize = 256;
 
-pub fn trilinear_interp(c: [[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
+/*pub fn trilinear_interp(c: [[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
     let mut accum = 0.0;
     for i in 0..1 {
         for j in 0..1 {
@@ -17,7 +17,7 @@ pub fn trilinear_interp(c: [[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
         }
     }
     accum
-}
+}*/
 #[derive(Clone)]
 pub struct Perlin {
     pub ranvec: Vec<Vec3>,
@@ -92,24 +92,24 @@ impl Perlin {
             perm_z: Perlin::perlin_generate_perm(),
         }
     }
-    pub fn noise(&self, p: &Vec3) -> f64 {
-        let u = p.x - p.x.floor();
-        let v = p.y - p.y.floor();
-        let w = p.z - p.z.floor();
-        let i = p.x.floor() as i32;
-        let j = p.y.floor() as i32;
-        let k = p.z.floor() as i32;
-        let mut c: [[[Vec3; 2]; 2]; 2] = [[[Vec3::zero(); 2]; 2]; 2];
-        for di in 0..1 {
-            for dj in 0..1 {
-                for dk in 0..1 {
-                    c[di][dj][dk] = self.ranvec[(self.perm_x[(i + di as i32) as usize & 255]
-                        ^ self.perm_y[(j + dj as i32) as usize & 255]
-                        ^ self.perm_z[(k + dk as i32) as usize & 255])
+    pub fn noise(&self, pos: &Vec3) -> f64 {
+        let dim_u = pos.x - pos.x.floor();
+        let dim_v = pos.y - pos.y.floor();
+        let dim_w = pos.z - pos.z.floor();
+        let dim_i = pos.x.floor() as i32;
+        let dim_j = pos.y.floor() as i32;
+        let dim_k = pos.z.floor() as i32;
+        let mut tmp: [[[Vec3; 2]; 2]; 2] = [[[Vec3::zero(); 2]; 2]; 2];
+        for di in 0..2 {
+            for dj in 0..2 {
+                for dk in 0..2 {
+                    tmp[di][dj][dk] = self.ranvec[(self.perm_x[(dim_i + di as i32) as usize & 255]
+                        ^ self.perm_y[(dim_j + dj as i32) as usize & 255]
+                        ^ self.perm_z[(dim_k + dk as i32) as usize & 255])
                         as usize];
                 }
             }
         }
-        Perlin::perlin_interp(c, u, v, w)
+        Perlin::perlin_interp(tmp, dim_u, dim_v, dim_w)
     }
 }
