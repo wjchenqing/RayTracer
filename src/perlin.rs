@@ -27,7 +27,7 @@ pub struct Perlin {
     pub perm_z: Vec<i32>,
 }
 pub fn permute(p: &mut Vec<i32>, n: i32) {
-    for i in (1..n).rev() {
+    for i in (0..n).rev() {
         let i = i as usize;
         let target = random::<usize>() % (i + 1);
         (*p).swap(i as usize, target as usize)
@@ -47,13 +47,13 @@ impl Perlin {
         let vv = v * v * (3.0 - 2.0 * v);
         let ww = w * w * (3.0 - 2.0 * w);
         let mut accum = 0.0;
-        for i in 0..1 {
-            for j in 0..1 {
-                for k in 0..1 {
+        for i in 0..2 {
+            for j in 0..2 {
+                for k in 0..2 {
                     let weight_v = Vec3::new(u - i as f64, v - j as f64, w - k as f64);
-                    accum += (i as f64 * uu + (1 - i) as f64 * (1.0 - uu))
-                        * (j as f64 * vv + (1 - j) as f64 * (1.0 - vv))
-                        * (k as f64 * ww + (1 - k) as f64 * (1.0 - ww))
+                    accum += (i as f64 * uu + (1.0 - i as f64) * (1.0 - uu))
+                        * (j as f64 * vv + (1.0 - j as f64) * (1.0 - vv))
+                        * (k as f64 * ww + (1.0 - k as f64) * (1.0 - ww))
                         * (c[i][j][k] * weight_v)
                 }
             }
@@ -96,16 +96,16 @@ impl Perlin {
         let u = p.x - p.x.floor();
         let v = p.y - p.y.floor();
         let w = p.z - p.z.floor();
-        let i = p.x.floor();
-        let j = p.y.floor();
-        let k = p.z.floor();
+        let i = p.x.floor() as i32;
+        let j = p.y.floor() as i32;
+        let k = p.z.floor() as i32;
         let mut c: [[[Vec3; 2]; 2]; 2] = [[[Vec3::zero(); 2]; 2]; 2];
         for di in 0..1 {
             for dj in 0..1 {
                 for dk in 0..1 {
-                    c[di][dj][dk] = self.ranvec[(self.perm_x[(i as usize + di) & 255]
-                        ^ self.perm_y[(j as usize + dj) & 255]
-                        ^ self.perm_z[(k as usize + dk) & 255])
+                    c[di][dj][dk] = self.ranvec[(self.perm_x[(i + di as i32) as usize & 255]
+                        ^ self.perm_y[(j + dj as i32) as usize & 255]
+                        ^ self.perm_z[(k + dk as i32) as usize & 255])
                         as usize];
                 }
             }

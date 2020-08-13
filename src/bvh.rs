@@ -17,14 +17,13 @@ pub struct BvhNode {
 }
 impl Hittable for BvhNode {
     fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-        let mut t_min = t_min;
-        let mut t_max = t_max;
-        if !self._box.hit(ray, &mut t_min, &mut t_max) {
+        // println!("start");
+        if !self._box.hit(ray, t_min, t_max) {
             // println!("a");
             return None;
         }
         if let Some(tmp1) = self.left.hit(ray, t_min, t_max) {
-            if let Some(tmp2) = self.right.hit(ray, t_min, t_max) {
+            if let Some(tmp2) = self.right.hit(ray, t_min, tmp1.t) {
                 // println!("22222222222222");
                 return Some(tmp2);
             } else {
@@ -113,7 +112,7 @@ impl BvhNode {
             right = Arc::new(BvhNode::new(objects, mid, end, time0, time1));
         }
         if let Some(box_left) = left.bounding_box(time0, time1) {
-            if let Some(box_right) = left.bounding_box(time0, time1) {
+            if let Some(box_right) = right.bounding_box(time0, time1) {
                 _box = surrounding_box(box_left, box_right);
                 return Self { left, right, _box };
             }
@@ -131,9 +130,9 @@ impl AABB {
     pub fn new(a: &Vec3, b: &Vec3) -> Self {
         Self { _min: *a, _max: *b }
     }
-    pub fn hit(&self, ray: &Ray, tmin: &mut f64, tmax: &mut f64) -> bool {
-        let mut t_min = *tmin;
-        let mut t_max = *tmax;
+    pub fn hit(&self, ray: &Ray, tmin: f64, tmax: f64) -> bool {
+        let mut t_min = tmin;
+        let mut t_max = tmax;
         let inv = 1.0 / ray.dir.x;
         let mut t0 = (self._min.x - ray.ori.x) / ray.dir.x;
         let mut t1 = (self._max.x - ray.ori.x) / ray.dir.x;
