@@ -14,12 +14,13 @@ pub use std::sync::Arc;
 pub trait Texture: Sync + Send {
     fn value(&self, u: f64, v: f64, p: &Vec3) -> Vec3;
 }
+#[derive(Clone)]
 pub struct SolidColor {
     pub color_value: Vec3,
 }
 impl SolidColor {
-    pub fn new(c: Vec3) -> Self {
-        Self { color_value: c }
+    pub fn new(c: &Vec3) -> Self {
+        Self { color_value: *c }
     }
 }
 impl Texture for SolidColor {
@@ -27,6 +28,7 @@ impl Texture for SolidColor {
         self.color_value
     }
 }
+#[derive(Clone)]
 pub struct CheckerTexture {
     pub odd: Arc<dyn Texture>,
     pub even: Arc<dyn Texture>,
@@ -40,8 +42,8 @@ impl CheckerTexture {
     }
     pub fn new_from_color(c1: &Vec3, c2: &Vec3) -> Self {
         Self {
-            even: Arc::new(SolidColor::new(*c1)),
-            odd: Arc::new(SolidColor::new(*c2)),
+            even: Arc::new(SolidColor::new(c1)),
+            odd: Arc::new(SolidColor::new(c2)),
         }
     }
 }
@@ -55,13 +57,16 @@ impl Texture for CheckerTexture {
         }
     }
 }
+#[derive(Clone)]
 pub struct NoiseTexture {
     pub noise: Perlin,
     pub scale: f64,
 }
 impl Texture for NoiseTexture {
     fn value(&self, _u: f64, _v: f64, p: &Vec3) -> Vec3 {
-        Vec3::new(1.0, 1.0, 1.0) * 0.5 * (1.0 + (self.scale * p.z + 10.0 * self.noise.turb(p, 7)).sin())
+        Vec3::new(1.0, 1.0, 1.0)
+            * 0.5
+            * (1.0 + (self.scale * p.z + 10.0 * self.noise.turb(p, 7)).sin())
     }
 }
 impl Default for NoiseTexture {
@@ -92,6 +97,7 @@ pub fn clamp(x: f64, min: f64, max: f64) -> f64 {
         x
     }
 }
+#[derive(Clone)]
 pub struct ImageTexture {
     pub my_image: image::DynamicImage,
     pub width: u32,

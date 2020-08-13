@@ -10,6 +10,7 @@ pub use std::f64::consts::PI;
 pub use std::f64::INFINITY;
 pub use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct BvhNode {
     pub left: Arc<dyn Hittable>,
     pub right: Arc<dyn Hittable>,
@@ -145,10 +146,8 @@ impl AABB {
             return false;
         }
         let inv = 1.0 / ray.dir.y;
-        let mut t0 =
-            (self._min.y - ray.ori.y) / ray.dir.y;
-        let mut t1 =
-            (self._max.y - ray.ori.y) / ray.dir.y;
+        let mut t0 = (self._min.y - ray.ori.y) / ray.dir.y;
+        let mut t1 = (self._max.y - ray.ori.y) / ray.dir.y;
         if inv < 0.0 {
             std::mem::swap(&mut t0, &mut t1);
         }
@@ -158,10 +157,8 @@ impl AABB {
             return false;
         }
         let inv = 1.0 / ray.dir.z;
-        let mut t0 =
-            (self._min.z - ray.ori.z) / ray.dir.z;
-        let mut t1 =
-            (self._max.z - ray.ori.z) / ray.dir.z;
+        let mut t0 = (self._min.z - ray.ori.z) / ray.dir.z;
+        let mut t1 = (self._max.z - ray.ori.z) / ray.dir.z;
         if inv < 0.0 {
             std::mem::swap(&mut t0, &mut t1);
         }

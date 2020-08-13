@@ -37,8 +37,8 @@ pub use vec3::Vec3;
 fn ray_color(
     ray: &Ray,
     background: &Vec3,
-    world: &dyn Hittable,
-    lights: Arc<dyn Hittable>,
+    world: &HittableList,
+    lights: &Arc<HittableList>,
     depth: i32,
 ) -> Vec3 {
     if depth <= 0 {
@@ -200,8 +200,8 @@ fn sphere() {
     let i_h = 600;
     let i_w = 600;
     let (tx, rx) = channel();
-    let n_jobs: usize = 64;
-    let n_workers = 8;
+    let n_jobs: usize = 32;
+    let n_workers = 4;
     let pool = ThreadPool::new(n_workers);
 
     let samples_per_pixel = 10000;
@@ -221,18 +221,22 @@ fn sphere() {
     //     radius: 90.0,
     //     mat_ptr: Arc::new(Lambertian::new(Vec3::zero())),
     // }));
-    lights.add(Arc::new(XzRect {
+    lights.objects.push(Arc::new(XzRect {
         x0: 123.0,
         x1: 423.0,
         z0: 147.0,
         z1: 412.0,
         k: 554.0,
-        mp: Arc::new(Lambertian::new(Vec3::zero())),
+        mp: Lambertian {
+            albedo: SolidColor::new(&Vec3::zero()),
+        },
     }));
-    lights.add(Arc::new(Sphere {
+    lights.objects.push(Arc::new(Sphere {
         center: Vec3::new(260.0, 150.0, 45.0),
         radius: 50.0,
-        mat_ptr: Arc::new(Lambertian::new(Vec3::zero())),
+        mat_ptr: Lambertian {
+            albedo: SolidColor::new(&Vec3::zero()),
+        },
     }));
     let lights = Arc::new(lights);
 
@@ -285,7 +289,7 @@ fn sphere() {
                         let u = (x as f64 + random_num()) / ((i_w - 1) as f64);
                         let v = ((i_h - y) as f64 - random_num()) / ((i_h - 1) as f64);
                         let r = camera.get_ray(u, v);
-                        color += ray_color(&r, &background, &world, lights_ptr.clone(), max_depth);
+                        color += ray_color(&r, &background, &world, &lights_ptr, max_depth);
                     }
                     let mut r = color.x;
                     let mut g = color.y;

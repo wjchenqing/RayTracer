@@ -28,10 +28,11 @@ pub trait Material: Sync + Send {
         0.0
     }
 }
-pub struct Lambertian {
-    pub albedo: Arc<dyn Texture>,
+#[derive(Clone)]
+pub struct Lambertian<T: Texture + Clone> {
+    pub albedo: T,
 }
-impl Material for Lambertian {
+impl<T: Texture + Clone> Material for Lambertian<T> {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         Some(ScatterRecord {
             specular_ray: None,
@@ -51,16 +52,6 @@ impl Material for Lambertian {
         Vec3::zero()
     }
 }
-impl Lambertian {
-    pub fn new(albedo: Vec3) -> Self {
-        Self {
-            albedo: Arc::new(SolidColor::new(albedo)),
-        }
-    }
-    pub fn new_from_arc(a: Arc<dyn Texture>) -> Self {
-        Self { albedo: a }
-    }
-}
 fn reflect(v: Vec3, n: Vec3) -> Vec3 {
     v - n * (v * n) * 2.0
 }
@@ -76,6 +67,7 @@ fn schlick(cosine: f64, ref_idx: f64) -> f64 {
     let r0 = r0 * r0;
     r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
 }
+#[derive(Clone)]
 pub struct Dielectric {
     pub ref_idx: f64,
 }
@@ -133,6 +125,7 @@ impl Material for Dielectric {
         }
     }
 }
+#[derive(Clone)]
 pub struct Metal {
     pub albedo: Vec3,
     pub fuzz: f64,
@@ -168,20 +161,11 @@ impl Material for Metal {
     }
 }
 
-pub struct DiffuseLight {
-    pub emit: Arc<dyn Texture>,
+#[derive(Clone)]
+pub struct DiffuseLight<T: Texture + Clone> {
+    pub emit: T,
 }
-impl DiffuseLight {
-    pub fn new(a: Arc<dyn Texture>) -> Self {
-        Self { emit: a.clone() }
-    }
-    pub fn new_from_color(c: &Vec3) -> Self {
-        Self {
-            emit: Arc::new(SolidColor::new(*c)),
-        }
-    }
-}
-impl Material for DiffuseLight {
+impl<T: Texture + Clone> Material for DiffuseLight<T> {
     fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<ScatterRecord> {
         // let reflected = Vec3::new(0.0, -1.0, 0.0);//reflect(r_in.dir.unit(), rec.nor);
         // let scattered = Ray::new(rec.pos, reflected + random_vec(&rec.nor));
@@ -198,10 +182,11 @@ impl Material for DiffuseLight {
     }
 }
 
-pub struct Isotropic {
-    pub albedo: Arc<dyn Texture>,
+#[derive(Clone)]
+pub struct Isotropic<T: Texture + Clone> {
+    pub albedo: T,
 }
-impl Material for Isotropic {
+impl<T: Texture + Clone> Material for Isotropic<T> {
     fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<ScatterRecord> {
         let scattered = Ray::new(rec.pos, random_unit());
         let attenuation = self.albedo.value(rec.u, rec.v, &rec.pos);

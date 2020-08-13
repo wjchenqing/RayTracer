@@ -18,7 +18,7 @@ pub fn trilinear_interp(c: [[[f64; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
     }
     accum
 }
-
+#[derive(Clone)]
 pub struct Perlin {
     pub ranvec: Vec<Vec3>,
     // pub ranfloat: Vec<f64>,
