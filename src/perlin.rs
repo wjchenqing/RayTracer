@@ -42,7 +42,7 @@ impl Perlin {
         permute(&mut p, POINT_COUNT as i32);
         p
     }
-    pub fn perlin_interp(c: [[[Vec3; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
+    /*pub fn perlin_interp(c: [[[Vec3; 2]; 2]; 2], u: f64, v: f64, w: f64) -> f64 {
         let uu = u * u * (3.0 - 2.0 * u);
         let vv = v * v * (3.0 - 2.0 * v);
         let ww = w * w * (3.0 - 2.0 * w);
@@ -59,7 +59,7 @@ impl Perlin {
             }
         }
         accum
-    }
+    }*/
     pub fn turb(&self, p: &Vec3, depth: i32) -> f64 {
         let mut accum = 0.0;
         let mut tem_p = *p;
@@ -96,20 +96,29 @@ impl Perlin {
         let dim_u = pos.x - pos.x.floor();
         let dim_v = pos.y - pos.y.floor();
         let dim_w = pos.z - pos.z.floor();
+        let uu = dim_u * dim_u * (3.0 - 2.0 * dim_u);
+        let vv = dim_v * dim_v * (3.0 - 2.0 * dim_v);
+        let ww = dim_w * dim_w * (3.0 - 2.0 * dim_w);
         let dim_i = pos.x.floor() as i32;
         let dim_j = pos.y.floor() as i32;
         let dim_k = pos.z.floor() as i32;
-        let mut tmp: [[[Vec3; 2]; 2]; 2] = [[[Vec3::zero(); 2]; 2]; 2];
+        let mut accum = 0.0;
         for di in 0..2 {
             for dj in 0..2 {
                 for dk in 0..2 {
-                    tmp[di][dj][dk] = self.ranvec[(self.perm_x[(dim_i + di as i32) as usize & 255]
+                    let c = self.ranvec[(self.perm_x[(dim_i + di as i32) as usize & 255]
                         ^ self.perm_y[(dim_j + dj as i32) as usize & 255]
                         ^ self.perm_z[(dim_k + dk as i32) as usize & 255])
                         as usize];
+                    let weight_v =
+                        Vec3::new(dim_u - di as f64, dim_v - dj as f64, dim_w - dk as f64);
+                    accum += (di as f64 * uu + (1.0 - di as f64) * (1.0 - uu))
+                        * (dj as f64 * vv + (1.0 - dj as f64) * (1.0 - vv))
+                        * (dk as f64 * ww + (1.0 - dk as f64) * (1.0 - ww))
+                        * (c * weight_v);
                 }
             }
         }
-        Perlin::perlin_interp(tmp, dim_u, dim_v, dim_w)
+        accum
     }
 }
